@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --scan-glow: 0 0 20px rgba(56, 189, 248, 0.4);
+    --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Doctor theme (dark) */
+  [data-theme="doctor"] {
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --border: #334155;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --accent: #38BDF8;
+  }
+
+  /* Patient theme (warm) */
+  [data-theme="patient"] {
+    --bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --border: #E7E5E4;
+    --text: #1C1917;
+    --text-muted: #78716C;
+    --accent: #0D9488;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+}
+
+@layer components {
+  .severity-badge-severe {
+    @apply bg-severe-bg text-severe-soft border border-severe/30 px-3 py-1 rounded-full text-xs font-medium;
+  }
+  .severity-badge-moderate {
+    @apply bg-moderate-bg text-moderate-soft border border-moderate/30 px-3 py-1 rounded-full text-xs font-medium;
+  }
+  .severity-badge-mild {
+    @apply bg-mild-bg text-mild-soft border border-mild/30 px-3 py-1 rounded-full text-xs font-medium;
+  }
+  .verified-badge {
+    @apply bg-verified-bg text-verified border border-verified/30 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1;
+  }
+  .card-dark {
+    @apply bg-surface border border-border rounded-xl p-6 shadow-lg;
+  }
+  .card-light {
+    @apply bg-white border border-patient-border rounded-xl p-6 shadow-sm;
+  }
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200;
+  }
+  .btn-outline-light {
+    @apply border border-white/30 text-white hover:bg-white/10 px-6 py-3 rounded-lg font-medium transition-colors duration-200;
+  }
+}
