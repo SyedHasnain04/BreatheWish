@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const handler = NextAuth({
+const { handlers } = NextAuth({
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -21,8 +21,8 @@ const handler = NextAuth({
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: new URLSearchParams({
-              username: credentials.email,
-              password: credentials.password,
+              username: credentials.email as string,
+              password: credentials.password as string,
             }),
           });
 
@@ -53,7 +53,7 @@ const handler = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
         token.accessToken = user.accessToken;
@@ -61,11 +61,11 @@ const handler = NextAuth({
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token && session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
-        session.accessToken = token.accessToken as string;
+        (session as any).accessToken = token.accessToken as string;
       }
       return session;
     },
@@ -78,4 +78,4 @@ const handler = NextAuth({
   },
 });
 
-export { handler as GET, handler as POST };
+export const { GET, POST } = handlers;

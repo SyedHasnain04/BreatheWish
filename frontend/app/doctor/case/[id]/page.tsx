@@ -4,11 +4,11 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
-import XRayViewer from "../../../../components/doctor/XRayViewer";
-import ConfidenceChart from "../../../../components/doctor/ConfidenceChart";
-import PrescriptionEditor from "../../../../components/doctor/PrescriptionEditor";
-import SecondOpinionPanel from "../../../../components/doctor/SecondOpinionPanel";
-import ConsultationThread from "../../../../components/patient/ConsultationThread";
+import XRayViewer from "@/components/doctor/XRayViewer";
+import ConfidenceChart from "@/components/doctor/ConfidenceChart";
+import PrescriptionEditor from "@/components/doctor/PrescriptionEditor";
+import SecondOpinionPanel from "@/components/doctor/SecondOpinionPanel";
+import ConsultationThread from "@/components/patient/ConsultationThread";
 import { ArrowLeft, Calendar } from "lucide-react";
 import Link from "next/link";
 
@@ -20,13 +20,11 @@ export default function DoctorCasePage() {
   const [prescription, setPrescription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Follow-up
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpReason, setFollowUpReason] = useState("");
   const [suggestedDate, setSuggestedDate] = useState("");
   const [savingFollowUp, setSavingFollowUp] = useState(false);
 
-  // Verdict
   const [verdict, setVerdict] = useState("");
   const [verdictSeverity, setVerdictSeverity] = useState("");
   const [verdictType, setVerdictType] = useState("");
@@ -43,14 +41,12 @@ export default function DoctorCasePage() {
           const data = await caseRes.json();
           setCaseData(data);
 
-          // Calculate suggested follow-up date
           const days = data.ai_severity === "severe" ? 3 : 7;
           const suggested = new Date();
           suggested.setDate(suggested.getDate() + days);
           setSuggestedDate(suggested.toISOString().split("T")[0]);
           setFollowUpDate(suggested.toISOString().split("T")[0]);
 
-          // Pre-fill verdict from case
           if (data.doctor_verdict) setVerdict(data.doctor_verdict);
           if (data.doctor_notes) setDoctorNotes(data.doctor_notes);
         }
@@ -121,7 +117,6 @@ export default function DoctorCasePage() {
 
   return (
     <div className="min-h-screen bg-background" data-theme="doctor">
-      {/* Sticky top bar */}
       <div className="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
           <Link href="/doctor/dashboard" className="text-text-muted hover:text-text-primary transition-colors">
@@ -136,10 +131,7 @@ export default function DoctorCasePage() {
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* Left Column */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Patient Info */}
             <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
               <h2 className="font-bold text-text-primary mb-3">Patient Overview</h2>
               <div className="grid grid-cols-3 gap-4 text-sm">
@@ -156,7 +148,6 @@ export default function DoctorCasePage() {
               </div>
             </div>
 
-            {/* Symptoms */}
             <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4">Reported Symptoms</h3>
               <div className="grid grid-cols-2 gap-y-4 text-sm">
@@ -181,10 +172,8 @@ export default function DoctorCasePage() {
               )}
             </div>
 
-            {/* X-Ray Viewer */}
             <XRayViewer originalUrl={caseData.xray_url} gradcamUrl={caseData.gradcam_url} />
 
-            {/* Consultation Thread */}
             {currentUser && (
               <ConsultationThread
                 caseId={id}
@@ -194,9 +183,7 @@ export default function DoctorCasePage() {
             )}
           </div>
 
-          {/* Right Column */}
           <div className="lg:col-span-7 space-y-6">
-            {/* AI Analysis */}
             <ConfidenceChart
               confidence={caseData.ai_confidence || 0}
               severity={caseData.ai_severity || "none"}
@@ -204,7 +191,6 @@ export default function DoctorCasePage() {
               rawOutput={caseData.ai_raw_output}
             />
 
-            {/* Doctor Verdict */}
             <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
               <h3 className="font-semibold text-text-primary mb-4">Doctor Verdict</h3>
               <div className="flex flex-wrap gap-3 mb-4">
@@ -252,7 +238,6 @@ export default function DoctorCasePage() {
               </button>
             </div>
 
-            {/* Prescription Editor */}
             {prescription && (
               <PrescriptionEditor
                 caseId={id}
@@ -262,7 +247,6 @@ export default function DoctorCasePage() {
               />
             )}
 
-            {/* Second Opinion Panel */}
             {currentUser && (
               <SecondOpinionPanel
                 caseId={id}
@@ -273,7 +257,6 @@ export default function DoctorCasePage() {
               />
             )}
 
-            {/* Follow-up */}
             <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="w-5 h-5 text-doctor-accent" />

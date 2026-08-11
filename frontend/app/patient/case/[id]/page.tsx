@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import CaseStatusStepper from "../../../../components/patient/CaseStatusStepper";
-import PrescriptionCard from "../../../../components/patient/PrescriptionCard";
-import ConsultationThread from "../../../../components/patient/ConsultationThread";
+import CaseStatusStepper from "@/components/patient/CaseStatusStepper";
+import PrescriptionCard from "@/components/patient/PrescriptionCard";
+import ConsultationThread from "@/components/patient/ConsultationThread";
 import { MessageSquare, ChevronDown } from "lucide-react";
 
 export default function PatientCasePage() {
@@ -31,13 +31,11 @@ export default function PatientCasePage() {
           const data = await caseRes.json();
           setCaseData(data);
 
-          // Try to get prescription
           if (data.status === "verified" || data.status === "closed") {
             const rxRes = await fetch(`/api/proxy/prescriptions/${id}`);
             if (rxRes.ok) setPrescription(await rxRes.json());
           }
 
-          // Try to get second opinion
           const soRes = await fetch(`/api/proxy/second-opinion/${id}`);
           if (soRes.ok) {
             const soData = await soRes.json();
@@ -82,7 +80,6 @@ export default function PatientCasePage() {
   return (
     <div className="min-h-screen bg-patient-bg" data-theme="patient">
       <div className="max-w-3xl mx-auto px-6 pt-24 pb-16 space-y-6">
-        {/* Header */}
         <div>
           <p className="text-xs text-text-dark-muted font-mono">Case #{id.split("-")[0].toUpperCase()}</p>
           <h1 className="text-2xl font-bold text-text-dark mt-1">
@@ -90,15 +87,12 @@ export default function PatientCasePage() {
           </h1>
         </div>
 
-        {/* Status Stepper */}
         <div className="bg-patient-surface border border-patient-border rounded-2xl p-6">
           <CaseStatusStepper status={caseData.status} />
         </div>
 
-        {/* Prescription */}
         {prescription && <PrescriptionCard prescription={prescription} />}
 
-        {/* Second Opinion */}
         {soSubmitted && secondOpinion && (
           <div className={`rounded-xl border p-5 ${
             secondOpinion.agrees_with_primary === true
@@ -150,7 +144,6 @@ export default function PatientCasePage() {
           </div>
         )}
 
-        {/* Consultation Thread */}
         {currentUser && (
           <div className="bg-patient-surface border border-patient-border rounded-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-6 py-4 border-b border-patient-border">

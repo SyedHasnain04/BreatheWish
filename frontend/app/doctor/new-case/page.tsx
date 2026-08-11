@@ -1,5 +1,5 @@
 import React from "react";
-import NewCaseForm from "../../../components/cases/NewCaseForm";
+import NewCaseForm from "@/components/cases/NewCaseForm";
 
 export default function DoctorNewCasePage() {
   return (
@@ -10,10 +10,6 @@ export default function DoctorNewCasePage() {
           Upload a patient X-ray and fill symptoms on their behalf for immediate AI analysis.
         </p>
       </div>
-      {/* 
-        The prompt says 'Styling: use patient warm theme on root div'.
-        The NewCaseForm is hardcoded to render with patient theme data-theme="patient" internally. 
-      */}
       <NewCaseForm isDoctor={true} />
     </div>
   );

@@ -1,5 +1,5 @@
 import React from "react";
-import NewCaseForm from "../../../components/cases/NewCaseForm";
+import NewCaseForm from "@/components/cases/NewCaseForm";
 
 export default function PatientNewCasePage() {
   return (
