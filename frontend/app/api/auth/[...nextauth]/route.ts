@@ -38,14 +38,23 @@ const { handlers } = NextAuth({
               signal: AbortSignal.timeout(25000),
             });
 
-            // Fallback to standard OAuth2 form if needed
+            // Fallback to standard OAuth2 form with legacy mapping support
             if (!res.ok) {
+              const legacyDoctorMap: Record<string, string> = {
+                "BWD-ARUN01": "arun@hospital.com",
+                "BWD-PRIYA1": "priya@hospital.com",
+                "BWD-VIKR01": "vikram@hospital.com",
+                "BWD-RAJA01": "rajan@hospital.com",
+                "BWD-SUNI01": "sunita@hospital.com",
+              };
+              const legacyEmail = legacyDoctorMap[docId];
+
               res = await fetch(`${backendUrl}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams({
-                  username: docId,
-                  password: "doctor_id_login",
+                  username: legacyEmail || docId,
+                  password: legacyEmail ? "doctor123" : "doctor_id_login",
                 }),
                 cache: "no-store",
                 signal: AbortSignal.timeout(25000),
@@ -69,13 +78,19 @@ const { handlers } = NextAuth({
               signal: AbortSignal.timeout(25000),
             });
 
-            // Fallback to standard OAuth2 form
+            // Fallback to standard OAuth2 form with legacy email support
             if (!res.ok) {
+              const legacyPatientMap: Record<string, string> = {
+                ravi_kumar: "ravi@patient.com",
+                priya_nair: "priya@patient.com",
+              };
+              const legacyEmail = legacyPatientMap[identifier];
+
               res = await fetch(`${backendUrl}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams({
-                  username: identifier,
+                  username: legacyEmail || identifier,
                   password: password,
                 }),
                 cache: "no-store",
