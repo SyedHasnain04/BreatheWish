@@ -29,35 +29,36 @@ const { handlers } = NextAuth({
             const docId = ((credentials.doctor_id || credentials.username || "") as string).trim().toUpperCase();
             if (!docId) return null;
 
-            // Try dedicated doctor endpoint first
-            let res = await fetch(`${backendUrl}/auth/login/doctor`, {
+            const legacyDoctorMap: Record<string, string> = {
+              "BWD-ARUN01": "arun@hospital.com",
+              "BWD-PRIYA1": "priya@hospital.com",
+              "BWD-VIKR01": "vikram@hospital.com",
+              "BWD-RAJA01": "rajan@hospital.com",
+              "BWD-SUNI01": "sunita@hospital.com",
+            };
+            const mappedUser = legacyDoctorMap[docId] || docId;
+            const mappedPass = legacyDoctorMap[docId] ? "doctor123" : "doctor_id_login";
+
+            // Single high-speed request
+            let res = await fetch(`${backendUrl}/auth/login`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ doctor_id: docId }),
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                username: mappedUser,
+                password: mappedPass,
+              }),
               cache: "no-store",
-              signal: AbortSignal.timeout(25000),
+              signal: AbortSignal.timeout(20000),
             });
 
-            // Fallback to standard OAuth2 form with legacy mapping support
             if (!res.ok) {
-              const legacyDoctorMap: Record<string, string> = {
-                "BWD-ARUN01": "arun@hospital.com",
-                "BWD-PRIYA1": "priya@hospital.com",
-                "BWD-VIKR01": "vikram@hospital.com",
-                "BWD-RAJA01": "rajan@hospital.com",
-                "BWD-SUNI01": "sunita@hospital.com",
-              };
-              const legacyEmail = legacyDoctorMap[docId];
-
-              res = await fetch(`${backendUrl}/auth/login`, {
+              // Try dedicated doctor endpoint if standard returned error
+              res = await fetch(`${backendUrl}/auth/login/doctor`, {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                  username: legacyEmail || docId,
-                  password: legacyEmail ? "doctor123" : "doctor_id_login",
-                }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ doctor_id: docId }),
                 cache: "no-store",
-                signal: AbortSignal.timeout(25000),
+                signal: AbortSignal.timeout(20000),
               });
             }
 
@@ -69,32 +70,32 @@ const { handlers } = NextAuth({
             const password = (credentials.password as string) || "";
             if (!identifier || !password) return null;
 
-            // Try dedicated patient endpoint first
-            let res = await fetch(`${backendUrl}/auth/login/patient`, {
+            const legacyPatientMap: Record<string, string> = {
+              ravi_kumar: "ravi@patient.com",
+              priya_nair: "priya@patient.com",
+            };
+            const mappedUser = legacyPatientMap[identifier] || identifier;
+
+            // Single high-speed request
+            let res = await fetch(`${backendUrl}/auth/login`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username: identifier, password }),
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                username: mappedUser,
+                password: password,
+              }),
               cache: "no-store",
-              signal: AbortSignal.timeout(25000),
+              signal: AbortSignal.timeout(20000),
             });
 
-            // Fallback to standard OAuth2 form with legacy email support
             if (!res.ok) {
-              const legacyPatientMap: Record<string, string> = {
-                ravi_kumar: "ravi@patient.com",
-                priya_nair: "priya@patient.com",
-              };
-              const legacyEmail = legacyPatientMap[identifier];
-
-              res = await fetch(`${backendUrl}/auth/login`, {
+              // Fallback to JSON endpoint
+              res = await fetch(`${backendUrl}/auth/login/patient`, {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                  username: legacyEmail || identifier,
-                  password: password,
-                }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: identifier, password }),
                 cache: "no-store",
-                signal: AbortSignal.timeout(25000),
+                signal: AbortSignal.timeout(20000),
               });
             }
 
@@ -104,24 +105,46 @@ const { handlers } = NextAuth({
 
           if (!tokens?.access_token) return null;
 
-          const userRes = await fetch(`${backendUrl}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${tokens.access_token}`,
-            },
-            cache: "no-store",
-            signal: AbortSignal.timeout(25000),
-          });
+          // Decode user directly from JWT payload in 0.1ms without an extra network round-trip!
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let user: any = null;
+          try {
+            const parts = tokens.access_token.split(".");
+            if (parts.length === 3) {
+              const payloadJson = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+              if (payloadJson?.id && payloadJson?.role) {
+                user = {
+                  id: payloadJson.id,
+                  email: payloadJson.sub || payloadJson.id,
+                  name: isDoctor ? (credentials.doctor_id || "Dr. Staff") : (credentials.username || "Patient"),
+                  role: payloadJson.role,
+                  accessToken: tokens.access_token,
+                };
+              }
+            }
+          } catch {
+            /* fallback to fetch /auth/me below */
+          }
 
-          if (!userRes.ok) return null;
-          const user = await userRes.json();
+          if (!user) {
+            const userRes = await fetch(`${backendUrl}/auth/me`, {
+              headers: { Authorization: `Bearer ${tokens.access_token}` },
+              cache: "no-store",
+              signal: AbortSignal.timeout(10000),
+            });
 
-          return {
-            id: user.id,
-            email: user.email || user.username || user.doctor_id || "user@breathewish.internal",
-            name: user.full_name,
-            role: user.role,
-            accessToken: tokens.access_token,
-          };
+            if (!userRes.ok) return null;
+            const fullUser = await userRes.json();
+            user = {
+              id: fullUser.id,
+              email: fullUser.email || fullUser.username || "user@breathewish.internal",
+              name: fullUser.full_name,
+              role: fullUser.role,
+              accessToken: tokens.access_token,
+            };
+          }
+
+          return user;
         } catch (e) {
           console.error("Auth authorize error:", e);
           return null;
