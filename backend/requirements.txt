@@ -13,9 +13,10 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
 
-# ML — explicit CPU-only wheels (avoids CUDA resolver, critical for Render free tier)
-torch==2.3.1+cpu --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
-torchvision==0.18.1+cpu --find-links https://download.pytorch.org/whl/cpu/torch_stable.html
+# ML — CPU-only wheels (no CUDA, cuts install from 800MB to ~180MB)
+-f https://download.pytorch.org/whl/cpu/torch_stable.html
+torch==2.3.1+cpu
+torchvision==0.18.1+cpu
 grad-cam==1.5.5
 Pillow==10.4.0
 numpy==1.26.4
