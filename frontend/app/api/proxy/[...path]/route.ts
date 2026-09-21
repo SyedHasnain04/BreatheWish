@@ -1,6 +1,9 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 /**
  * Same-origin proxy to the FastAPI backend. It attaches the user's access token
  * from the NextAuth session, so the browser never handles the backend JWT.
@@ -49,7 +52,8 @@ async function handler(req: NextRequest) {
     try {
       const payload = JSON.parse(new TextDecoder().decode(body as ArrayBuffer));
       body = JSON.stringify({
-        email: payload.email,
+        username: payload.username || (payload.email ? payload.email.split("@")[0] : undefined),
+        email: payload.email || undefined,
         password: payload.password,
         full_name: payload.full_name,
         date_of_birth: payload.date_of_birth || null,
@@ -80,7 +84,7 @@ async function handler(req: NextRequest) {
     if (ct) out.set("content-type", ct);
     return new NextResponse(upstream.body, { status: upstream.status, headers: out });
   } catch {
-    return NextResponse.json({ detail: "Backend unreachable" }, { status: 502 });
+    return NextResponse.json({ detail: "Backend unreachable or waking up" }, { status: 502 });
   }
 }
 

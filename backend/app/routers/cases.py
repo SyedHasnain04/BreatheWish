@@ -52,8 +52,12 @@ async def create_case(
     target_patient_id = current_user.id
     if current_user.role == "doctor":
         if not patient_email:
-            raise HTTPException(status_code=400, detail="Doctor must provide patient_email")
-        patient_user = db.query(User).filter(User.email == patient_email, User.role == "patient").first()
+            raise HTTPException(status_code=400, detail="Doctor must provide patient username or email")
+        ident = patient_email.strip().lower()
+        patient_user = db.query(User).filter(
+            ((User.username == ident) | (User.email == ident)),
+            User.role == "patient"
+        ).first()
         if not patient_user:
             raise HTTPException(status_code=404, detail="Patient not found")
         target_patient_id = patient_user.id

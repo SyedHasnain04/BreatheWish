@@ -144,9 +144,7 @@ export default function NewCaseForm({ isDoctor = false }: Props) {
     if (s === 1) {
       if (isDoctor) {
         if (!formData.patient_email.trim())
-          e.patient_email = "Enter the patient's registered email.";
-        else if (!/^\S+@\S+\.\S+$/.test(formData.patient_email))
-          e.patient_email = "That doesn't look like an email address.";
+          e.patient_email = "Enter the patient's registered username or email.";
       }
       const age = Number(formData.age);
       if (!formData.age) e.age = "Enter an age.";
@@ -269,11 +267,12 @@ export default function NewCaseForm({ isDoctor = false }: Props) {
             {isDoctor && (
               <div>
                 <label htmlFor="patient_email" className={label}>
-                  Patient email
+                  Patient username or email
                 </label>
                 <input
                   id="patient_email"
-                  type="email"
+                  type="text"
+                  placeholder="e.g. ravi_kumar"
                   autoComplete="off"
                   className={input}
                   value={formData.patient_email}

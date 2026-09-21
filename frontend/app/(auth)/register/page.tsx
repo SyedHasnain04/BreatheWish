@@ -12,7 +12,7 @@ const field =
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -25,7 +25,11 @@ export default function RegisterPage() {
 
     const next: Record<string, string> = {};
     if (!fullName.trim()) next.name = "Enter your full name.";
-    if (!/^\S+@\S+\.\S+$/.test(email)) next.email = "Enter a valid email address.";
+    if (!username.trim()) {
+      next.username = "Enter a username.";
+    } else if (!/^[a-zA-Z0-9_.-]{3,30}$/.test(username.trim())) {
+      next.username = "Username must be 3–30 characters (letters, numbers, underscore, dot).";
+    }
     if (password.length < 8) next.password = "Use at least 8 characters.";
     if (confirm !== password) next.confirm = "The passwords don't match.";
     setErrors(next);
@@ -36,7 +40,12 @@ export default function RegisterPage() {
       const res = await fetch("/api/proxy/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, full_name: fullName.trim(), role: "patient" }),
+        body: JSON.stringify({
+          username: username.trim().toLowerCase(),
+          password,
+          full_name: fullName.trim(),
+          role: "patient"
+        }),
       });
 
       if (!res.ok) {
@@ -47,19 +56,24 @@ export default function RegisterPage() {
           /* non-JSON error */
         }
         setFormError(
-          res.status === 400 && /already/i.test(String(detail))
-            ? "An account with that email already exists. Try logging in."
-            : "We couldn't create your account. Please try again."
+          detail || (res.status === 400 && /already/i.test(String(detail))
+            ? "That username is already registered. Try logging in."
+            : "We couldn't create your account. Please try again.")
         );
         setLoading(false);
         return;
       }
 
       // Log straight in so the patient lands on their dashboard
-      const result = await signIn("credentials", { email, password, redirect: false });
+      const result = await signIn("credentials", {
+        role: "patient",
+        username: username.trim().toLowerCase(),
+        password,
+        redirect: false
+      });
       router.push(result?.error ? "/login" : "/patient/dashboard");
     } catch {
-      setFormError("Network problem. Check your connection and try again.");
+      setFormError("Network or server problem. If backend was sleeping, please retry in a moment.");
       setLoading(false);
     }
   };
@@ -104,7 +118,7 @@ export default function RegisterPage() {
             Create a patient account
           </h1>
           <p className="text-sm text-text-muted mb-8">
-            Are you a doctor? Accounts for doctors are set up by an administrator.
+            Are you a doctor? Doctor accounts and ID badges are provisioned by hospital administrators.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -117,6 +131,7 @@ export default function RegisterPage() {
                 type="text"
                 autoComplete="name"
                 className={field}
+                placeholder="e.g. John Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 {...inv("name")}
@@ -124,19 +139,20 @@ export default function RegisterPage() {
               {err("name")}
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm text-text-muted mb-1.5">
-                Email
+              <label htmlFor="username" className="block text-sm text-text-muted mb-1.5">
+                Username
               </label>
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                type="text"
+                autoComplete="username"
                 className={field}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                {...inv("email")}
+                placeholder="e.g. johndoe"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                {...inv("username")}
               />
-              {err("email")}
+              {err("username")}
             </div>
             <div>
               <label htmlFor="password" className="block text-sm text-text-muted mb-1.5">
@@ -147,6 +163,7 @@ export default function RegisterPage() {
                 type="password"
                 autoComplete="new-password"
                 className={field}
+                placeholder="At least 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 {...inv("password")}
@@ -162,6 +179,7 @@ export default function RegisterPage() {
                 type="password"
                 autoComplete="new-password"
                 className={field}
+                placeholder="Re-enter password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 {...inv("confirm")}

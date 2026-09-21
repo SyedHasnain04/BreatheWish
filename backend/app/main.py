@@ -12,6 +12,14 @@ async def lifespan(app: FastAPI):
     # Auto-create tables if they don't exist
     try:
         Base.metadata.create_all(bind=engine)
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50);"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS doctor_id VARCHAR(20);"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL;"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username);"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_doctor_id ON users (doctor_id);"))
     except Exception as e:
         print(f"Database table initialization notice: {e}")
 

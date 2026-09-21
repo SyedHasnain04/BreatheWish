@@ -8,8 +8,10 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    username = Column(String(50), unique=True, nullable=True, index=True)
+    doctor_id = Column(String(20), unique=True, nullable=True, index=True)
+    email = Column(String(255), unique=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
     full_name = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)
     

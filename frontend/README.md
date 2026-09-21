@@ -8,17 +8,28 @@ For the full system documentation, backend configuration, and deployment guides,
 
 ## 🔑 Demo & Test Login Credentials
 
-| Role | Name | Email | Password |
-|---|---|---|---|
-| **Doctor** (Pulmonologist) | Dr. Arun Mehta | `arun@hospital.com` | `doctor123` |
-| **Doctor** (Consultant) | Dr. Priya Sharma | `priya@hospital.com` | `doctor123` |
-| **Doctor** (Junior) | Dr. Vikram Nair | `vikram@hospital.com` | `doctor123` |
-| **Doctor** (Cardiologist) | Dr. Rajan Pillai | `rajan@hospital.com` | `doctor123` |
-| **Doctor** (Radiologist) | Dr. Sunita Rao | `sunita@hospital.com` | `doctor123` |
-| **Patient** | Ravi Kumar | `ravi@patient.com` | `patient123` |
-| **Patient** | Priya Nair | `priya@patient.com` | `patient123` |
+BreatheWish uses role-split authentication:
 
-> Patients can also self-register at `/register`.
+### 🩺 Doctors (Hospital ID Card Login — No Password)
+Verified doctors authenticate directly with their assigned hospital ID badge number:
+
+| Role | Doctor Name | Hospital ID Card Number | Password |
+|---|---|---|---|
+| **Doctor** (Pulmonologist) | Dr. Arun Mehta | `BWD-ARUN01` | *(None required)* |
+| **Doctor** (Consultant) | Dr. Priya Sharma | `BWD-PRIYA1` | *(None required)* |
+| **Doctor** (Junior) | Dr. Vikram Nair | `BWD-VIKR01` | *(None required)* |
+| **Doctor** (Cardiologist) | Dr. Rajan Pillai | `BWD-RAJA01` | *(None required)* |
+| **Doctor** (Radiologist) | Dr. Sunita Rao | `BWD-SUNI01` | *(None required)* |
+
+### 👤 Patients (Username + Password)
+Patients log in using their username and password:
+
+| Role | Patient Name | Username | Password |
+|---|---|---|---|
+| **Patient** | Ravi Kumar | `ravi_kumar` | `patient123` |
+| **Patient** | Priya Nair | `priya_nair` | `patient123` |
+
+> New patients can self-register at `/register` with any username.
 
 ---
 

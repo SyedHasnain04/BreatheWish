@@ -36,13 +36,26 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        user_id: str = payload.get("id") or payload.get("sub")
+        if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
         
-    user = db.query(User).filter(User.email == email).first()
+    user = None
+    try:
+        import uuid
+        uid = uuid.UUID(str(user_id))
+        user = db.query(User).filter(User.id == uid).first()
+    except (ValueError, TypeError):
+        pass
+
+    if not user:
+        identifier = str(user_id).strip()
+        user = db.query(User).filter(
+            (User.email == identifier.lower()) | (User.username == identifier) | (User.doctor_id == identifier)
+        ).first()
+
     if user is None:
         raise credentials_exception
     return user
