@@ -28,7 +28,10 @@ async function handler(req: NextRequest) {
     );
   }
 
-  const backend = (process.env.BACKEND_URL || "https://breathewish-api.onrender.com").replace(/\/$/, "");
+  let backend = (process.env.BACKEND_URL || "").trim().replace(/\/$/, "");
+  if (!backend || backend.includes("localhost") || backend.includes("127.0.0.1")) {
+    backend = "https://breathewish-api.onrender.com";
+  }
   // Keep the trailing slash: FastAPI treats /cases and /cases/ as different routes.
   const subpath = req.nextUrl.pathname.replace(/^\/api\/proxy/, "");
   const first = subpath.split("/").filter(Boolean)[0] ?? "";

@@ -19,7 +19,10 @@ const { handlers } = NextAuth({
       async authorize(credentials) {
         if (!credentials) return null;
 
-        const backendUrl = (process.env.BACKEND_URL || "https://breathewish-api.onrender.com").replace(/\/$/, "");
+        let backendUrl = (process.env.BACKEND_URL || "").trim().replace(/\/$/, "");
+        if (!backendUrl || backendUrl.includes("localhost") || backendUrl.includes("127.0.0.1")) {
+          backendUrl = "https://breathewish-api.onrender.com";
+        }
         const isDoctor = credentials.role === "doctor" || Boolean(credentials.doctor_id);
 
         try {

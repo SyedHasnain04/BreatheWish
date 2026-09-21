@@ -2,7 +2,6 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogoMark } from "../../../components/hero/LandingNav";
 
@@ -13,18 +12,25 @@ export default function LoginPage() {
   const [doctorId, setDoctorId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    const timer = setTimeout(() => {
+      setError(
+        "Connecting took longer than 12 seconds. The server may still be waking up. Please try once more."
+      );
+      setLoading(false);
+    }, 12000);
+
     try {
       let result;
       if (role === "doctor") {
         const cleanedId = doctorId.trim().toUpperCase();
         if (!cleanedId) {
+          clearTimeout(timer);
           setError("Please enter your Hospital ID card number.");
           setLoading(false);
           return;
@@ -38,6 +44,7 @@ export default function LoginPage() {
       } else {
         const cleanedUser = username.trim();
         if (!cleanedUser || !password) {
+          clearTimeout(timer);
           setError("Please enter both your username and password.");
           setLoading(false);
           return;
@@ -50,6 +57,8 @@ export default function LoginPage() {
         });
       }
 
+      clearTimeout(timer);
+
       if (result?.error) {
         setError(
           role === "doctor"
@@ -58,13 +67,12 @@ export default function LoginPage() {
         );
         setLoading(false);
       } else {
-        router.push("/dashboard");
+        window.location.href = role === "doctor" ? "/doctor/dashboard" : "/patient/dashboard";
       }
     } catch (err) {
+      clearTimeout(timer);
       console.error("Login exception:", err);
-      setError(
-        "The server is taking longer than usual to respond (Render cold start can take ~30–45s). Please wait a moment and try again."
-      );
+      setError("Login failed. Please check your credentials or retry in a moment.");
       setLoading(false);
     }
   };
