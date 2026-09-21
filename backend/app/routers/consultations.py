@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 import uuid
 
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.user import User
-from app.models.consultation import Consultation
+from app.models.consultation import ConsultationMessage
 from app.models.notification import Notification
 from app.models.case import Case
 from pydantic import BaseModel
@@ -28,7 +27,7 @@ def send_message(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    msg = Consultation(
+    msg = ConsultationMessage(
         case_id=body.case_id,
         sender_id=current_user.id,
         sender_role=current_user.role,
@@ -74,9 +73,9 @@ def get_messages(case_id: str, db: Session = Depends(get_db), current_user: User
         raise HTTPException(status_code=404, detail="Case not found")
 
     messages = (
-        db.query(Consultation)
-        .filter(Consultation.case_id == case_id)
-        .order_by(Consultation.created_at.asc())
+        db.query(ConsultationMessage)
+        .filter(ConsultationMessage.case_id == case_id)
+        .order_by(ConsultationMessage.created_at.asc())
         .all()
     )
 
@@ -97,7 +96,7 @@ def get_messages(case_id: str, db: Session = Depends(get_db), current_user: User
 
 @router.patch("/{id}/read")
 def mark_read(id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    msg = db.query(Consultation).filter(Consultation.id == id).first()
+    msg = db.query(ConsultationMessage).filter(ConsultationMessage.id == id).first()
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
     msg.is_read = True
