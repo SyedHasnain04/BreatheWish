@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Send } from "lucide-react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+
 
 interface Message {
   id: string;
@@ -18,26 +18,26 @@ interface Props {
   currentUserId: string;
 }
 
-export default function ConsultationThread({ caseId, currentUserRole, currentUserId }: Props) {
+export default function ConsultationThread({ caseId, currentUserRole }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/proxy/consultations/${caseId}`);
-      if (res.ok) {
-        setMessages(await res.json());
-      }
-    } catch (e) { /* silent */ }
-  };
+      if (res.ok) setMessages(await res.json());
+    } catch {
+      /* silent background fetch error */
+    }
+  }, [caseId]);
 
   useEffect(() => {
     fetchMessages();
     const interval = setInterval(fetchMessages, 15000);
     return () => clearInterval(interval);
-  }, [caseId]);
+  }, [fetchMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,74 +47,136 @@ export default function ConsultationThread({ caseId, currentUserRole, currentUse
     if (!newMessage.trim() || sending) return;
     setSending(true);
     try {
-      await fetch(`/api/proxy/consultations/`, {
+      const res = await fetch("/api/proxy/consultations/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ case_id: caseId, message: newMessage.trim() })
+        body: JSON.stringify({ case_id: caseId, message: newMessage.trim() }),
       });
-      setNewMessage("");
-      await fetchMessages();
-    } catch (e) { /* silent */ }
+      if (res.ok) {
+        setNewMessage("");
+        await fetchMessages();
+      }
+    } catch {
+      /* silent */
+    }
     setSending(false);
   };
 
   const isPatient = currentUserRole === "patient";
-  const bubbleOwn = isPatient ? "bg-patient-accent text-white self-end" : "bg-doctor-accent text-white self-end";
-  const bubbleOther = "bg-gray-100 text-text-dark self-start";
 
   return (
-    <div className={`rounded-xl border shadow-sm flex flex-col overflow-hidden ${isPatient ? "border-patient-border" : "border-border bg-surface"}`}>
-      {/* Header */}
-      <div className={`px-4 py-3 border-b font-semibold text-sm ${isPatient ? "bg-patient-surface border-patient-border text-text-dark" : "bg-[#1E293B] border-border text-text-primary"}`}>
-        Consultation Thread
+    <div
+      className={`rounded-xl border shadow-sm flex flex-col overflow-hidden ${
+        isPatient
+          ? "border-patient-border bg-patient-surface"
+          : "border-border bg-surface"
+      }`}
+    >
+      <div
+        className={`px-4 py-3 border-b text-xs font-semibold uppercase tracking-wider ${
+          isPatient
+            ? "bg-patient-bg border-patient-border text-text-dark"
+            : "bg-surface-raised border-border text-text-primary"
+        }`}
+      >
+        Clinical Consultation
       </div>
 
-      {/* Messages */}
-      <div className={`flex-1 min-h-[250px] max-h-[350px] overflow-y-auto p-4 flex flex-col gap-3 ${isPatient ? "bg-patient-bg" : "bg-[#0F172A]"}`}>
+      <div
+        className={`flex-1 min-h-[240px] max-h-[340px] overflow-y-auto p-4 flex flex-col gap-3 ${
+          isPatient ? "bg-patient-bg/50" : "bg-background"
+        }`}
+      >
         {messages.length === 0 && (
-          <p className={`text-center text-sm my-auto ${isPatient ? "text-text-dark-muted" : "text-text-muted"}`}>
-            No messages yet. Ask your {isPatient ? "doctor" : "patient"} a question.
+          <p
+            className={`text-center text-xs my-auto ${
+              isPatient ? "text-text-dark-muted" : "text-text-muted"
+            }`}
+          >
+            No messages in this consultation yet. Ask a question below.
           </p>
         )}
         {messages.map((msg) => {
           const isOwn = msg.sender_role === currentUserRole;
           return (
-            <div key={msg.id} className={`max-w-[80%] flex flex-col gap-1 ${isOwn ? "self-end items-end" : "self-start items-start"}`}>
+            <div
+              key={msg.id}
+              className={`max-w-[85%] flex flex-col gap-1 ${
+                isOwn ? "self-end items-end" : "self-start items-start"
+              }`}
+            >
               {!isOwn && msg.sender_name && (
-                <span className="text-xs text-gray-400 px-1">{msg.sender_name}</span>
+                <span
+                  className={`text-[11px] px-1 font-medium ${
+                    isPatient ? "text-text-dark-muted" : "text-text-muted"
+                  }`}
+                >
+                  {msg.sender_name}
+                </span>
               )}
-              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isOwn ? bubbleOwn : bubbleOther}`}>
+              <div
+                className={`px-3.5 py-2 rounded-lg text-xs leading-relaxed ${
+                  isOwn
+                    ? isPatient
+                      ? "bg-patient-accent text-white"
+                      : "bg-doctor-accent text-background font-medium"
+                    : isPatient
+                    ? "bg-white border border-patient-border text-text-dark"
+                    : "bg-surface-raised border border-border text-text-primary"
+                }`}
+              >
                 {msg.message}
               </div>
-              <span className="text-[10px] text-gray-400 px-1">{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+              <span
+                className={`text-[10px] font-mono tabular px-1 ${
+                  isPatient ? "text-text-dark-muted/70" : "text-text-muted/70"
+                }`}
+              >
+                {new Date(msg.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className={`flex items-center gap-3 px-4 py-3 border-t ${isPatient ? "bg-patient-surface border-patient-border" : "bg-[#1E293B] border-border"}`}>
+      <div
+        className={`flex items-center gap-2 p-3 border-t ${
+          isPatient
+            ? "bg-patient-surface border-patient-border"
+            : "bg-surface border-border"
+        }`}
+      >
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type a message..."
-          className={`flex-1 rounded-lg px-4 py-2 text-sm border outline-none focus:ring-2 ${
+          placeholder="Write a message…"
+          className={`flex-1 rounded-lg px-3.5 py-2 text-xs border transition-colors outline-none focus:ring-1 ${
             isPatient
-              ? "bg-white border-patient-border focus:ring-patient-accent/30 text-text-dark"
-              : "bg-[#0F172A] border-border focus:ring-doctor-accent/30 text-text-primary"
+              ? "bg-white border-patient-border text-text-dark placeholder:text-text-dark-muted/60 focus:border-patient-accent focus:ring-patient-accent"
+              : "bg-background border border-border text-text-primary placeholder:text-text-muted/60 focus:border-doctor-accent focus:ring-doctor-accent"
           }`}
         />
         <button
+          type="button"
+          aria-label="Send message"
           onClick={sendMessage}
           disabled={sending || !newMessage.trim()}
-          className={`p-2.5 rounded-lg disabled:opacity-40 transition-colors ${
-            isPatient ? "bg-patient-accent hover:bg-teal-700 text-white" : "bg-doctor-accent hover:bg-sky-500 text-white"
+          className={`p-2 rounded-lg disabled:opacity-40 transition-colors flex items-center justify-center ${
+            isPatient
+              ? "bg-patient-accent hover:opacity-90 text-white"
+              : "bg-doctor-accent hover:opacity-90 text-background font-semibold"
           }`}
         >
-          <Send className="w-4 h-4" />
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m22 2-7 20-4-9-9-4Z" />
+            <path d="M22 2 11 13" />
+          </svg>
         </button>
       </div>
     </div>

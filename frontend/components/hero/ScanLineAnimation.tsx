@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef } from 'react';
-import { useAnimationFrame } from 'framer-motion';
-import Image from 'next/image';
+import React, { useRef } from "react";
+import { useAnimationFrame } from "framer-motion";
+import Image from "next/image";
 
 export default function ScanLineAnimation() {
   const lineRef = useRef<HTMLDivElement>(null);
@@ -16,87 +16,79 @@ export default function ScanLineAnimation() {
     const yPos = progress * 100;
 
     if (lineRef.current) {
-      lineRef.current.style.top = `${yPos}%`;
+      // transform, not `top`, so the line stays on the compositor
+      lineRef.current.style.transform = `translateY(${progress * 100}cqh)`;
     }
 
-    if (card1Ref.current) card1Ref.current.style.opacity = yPos > 30 ? '1' : '0';
-    if (card2Ref.current) card2Ref.current.style.opacity = yPos > 50 ? '1' : '0';
-    if (card3Ref.current) card3Ref.current.style.opacity = yPos > 70 ? '1' : '0';
+    if (card1Ref.current) card1Ref.current.style.opacity = yPos > 30 ? "1" : "0";
+    if (card2Ref.current) card2Ref.current.style.opacity = yPos > 50 ? "1" : "0";
+    if (card3Ref.current) card3Ref.current.style.opacity = yPos > 70 ? "1" : "0";
   });
 
   return (
-    <div className="relative w-full max-w-lg aspect-[3/4] bg-[#0F172A] border border-[#334155] rounded-xl overflow-hidden shadow-2xl mx-auto flex items-center justify-center">
-      
-      {/* SVG Definitions for glow filter */}
-      <svg className="absolute w-0 h-0">
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-      </svg>
-
-      {/* Real Chest X-Ray Image */}
+    <div
+      className="relative w-full max-w-md aspect-[3/4] bg-background border border-border rounded-2xl overflow-hidden shadow-card mx-auto"
+      style={{ containerType: "size" }}
+    >
       <div className="absolute inset-0">
         <Image
           src="/chest-xray.png"
-          alt="Chest X-Ray"
+          alt="Chest X-ray being scanned by an animated line"
           fill
+          sizes="(min-width: 1024px) 28rem, 90vw"
           className="object-cover opacity-60"
           priority
         />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(11,17,19,0.35), rgba(11,17,19,0) 30%, rgba(11,17,19,0.55))",
+          }}
+        />
       </div>
 
-      {/* The animated scan line */}
-      <div 
+      {/* Scan line */}
+      <div
         ref={lineRef}
-        className="absolute left-0 w-full z-10"
-        style={{ top: "0%" }}
-      >
-        <svg className="w-full h-6 -translate-y-1/2" preserveAspectRatio="none">
-          <rect x="0" y="11" width="100%" height="2" fill="#38BDF8" filter="url(#glow)" />
-        </svg>
-      </div>
+        aria-hidden="true"
+        className="absolute left-0 top-0 w-full h-px bg-doctor-accent z-10 shadow-scan will-change-transform"
+      />
 
-      {/* Data Point Cards */}
-      <div className="absolute inset-0 p-6 pointer-events-none">
-        
-        {/* Card 1: Confidence */}
-        <div 
-          ref={card1Ref} 
+      {/* Findings appear as the line passes them */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div
+          ref={card1Ref}
           className="absolute top-[30%] left-4 bg-surface/90 border border-border px-3 py-2 rounded-lg backdrop-blur-sm transition-opacity duration-300 opacity-0"
         >
           <div className="text-[10px] text-text-muted uppercase tracking-wider">Confidence</div>
-          <div className="text-sm text-doctor-accent font-bold">98.4%</div>
+          <div className="text-sm text-doctor-accent font-mono font-medium tabular">94.7%</div>
         </div>
 
-        {/* Card 2: Severity */}
-        <div 
-          ref={card2Ref} 
+        <div
+          ref={card2Ref}
           className="absolute top-[50%] right-4 bg-surface/90 border border-border px-3 py-2 rounded-lg backdrop-blur-sm transition-opacity duration-300 opacity-0"
         >
           <div className="text-[10px] text-text-muted uppercase tracking-wider">Severity</div>
-          <div className="text-sm text-severe-soft font-bold">Moderate</div>
+          <div className="text-sm text-moderate-soft font-medium">Moderate</div>
         </div>
 
-        {/* Card 3: Type */}
-        <div 
-          ref={card3Ref} 
+        <div
+          ref={card3Ref}
           className="absolute top-[70%] left-10 bg-surface/90 border border-border px-3 py-2 rounded-lg backdrop-blur-sm transition-opacity duration-300 opacity-0"
         >
           <div className="text-[10px] text-text-muted uppercase tracking-wider">Finding</div>
-          <div className="text-sm text-text-primary font-bold">Bilateral Infiltrates</div>
+          <div className="text-sm text-text-primary font-medium">Right lower lobe opacity</div>
         </div>
-
       </div>
 
-      {/* AI Badge Bottom Right */}
-      <div className="absolute bottom-4 right-4 bg-[#334155]/90 border border-[#334155] px-3 py-1.5 rounded-full flex items-center gap-2 z-20 backdrop-blur-sm">
-        <div className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse-slow"></div>
-        <span className="text-[10px] font-medium text-[#F1F5F9] tracking-wide">AI Assisted Detection</span>
+      <div className="absolute bottom-4 right-4 bg-surface/90 border border-border px-3 py-1.5 rounded-md flex items-center gap-2 z-20 backdrop-blur-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-doctor-accent animate-pulse-slow" />
+        <span className="text-[10px] font-medium text-text-primary tracking-wide">
+          AI pre-read · pending doctor review
+        </span>
       </div>
-
     </div>
   );
 }

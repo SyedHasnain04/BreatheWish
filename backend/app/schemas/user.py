@@ -1,13 +1,13 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import date
 from uuid import UUID
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
     full_name: str
-    role: str
+    role: str = "patient"
     specializations: Optional[List[str]] = None
     date_of_birth: Optional[date] = None
 

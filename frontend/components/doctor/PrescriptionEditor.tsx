@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, X, Save, ShieldCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 interface Medication {
   id: string;
@@ -18,207 +17,301 @@ interface Props {
   prescriptionId?: string;
   llmDraft: { draft: string };
   isVerified: boolean;
+  /** Called after the backend confirms verification, so the page can update */
+  onVerified?: () => void;
 }
 
-export default function PrescriptionEditor({ caseId, prescriptionId, llmDraft, isVerified }: Props) {
-  const router = useRouter();
-  
-  // Parse draft simply for initial state if not parsed yet
-  const [medications, setMedications] = useState<Medication[]>([{ id: "1", name: "", dosage: "", frequency: "1x daily", duration: "", notes: "" }]);
+const field =
+  "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/60 transition-colors duration-200 hover:border-text-muted/50 focus:outline-none focus:border-doctor-accent focus:ring-1 focus:ring-doctor-accent";
+const sectionLabel = "font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted";
+const blank = (id: string): Medication => ({
+  id,
+  name: "",
+  dosage: "",
+  frequency: "1x daily",
+  duration: "",
+  notes: "",
+});
+
+export default function PrescriptionEditor({ prescriptionId, llmDraft, isVerified, onVerified }: Props) {
+  const [medications, setMedications] = useState<Medication[]>([blank("1")]);
   const [generalAdvice, setGeneralAdvice] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
 
-  // Initial parse of LLM draft
+  // Seed the form from the AI draft once
   useEffect(() => {
     if (llmDraft?.draft && !isVerified) {
       const draft = llmDraft.draft;
-      // Extract General Advice
       const adviceMatch = draft.match(/General Advice:\s*([\s\S]*?)(?=Follow-up:|$)/i);
-      if (adviceMatch) setGeneralAdvice(adviceMatch[1].trim().replace(/-/g, '').trim());
-      
-      // Extract Follow-up
-      const followUpMatch = draft.match(/Follow-up:\s*([\s\S]*?)$/i);
-      if (followUpMatch) setFollowUpNotes(followUpMatch[1].trim().replace(/-/g, '').trim());
+      if (adviceMatch) setGeneralAdvice(adviceMatch[1].trim().replace(/-/g, "").trim());
 
-      // Try to extract some meds from "Medications:" block
+      const followUpMatch = draft.match(/Follow-up:\s*([\s\S]*?)$/i);
+      if (followUpMatch) setFollowUpNotes(followUpMatch[1].trim().replace(/-/g, "").trim());
+
       const medsMatch = draft.match(/Medications:\s*([\s\S]*?)(?=General Advice:|$)/i);
       if (medsMatch) {
-        const lines = medsMatch[1].split('\n').filter(l => l.trim().length > 0);
-        const parsedMeds = lines.map((line, idx) => ({
-          id: Date.now().toString() + idx,
-          name: line.replace(/^-/, '').trim(),
-          dosage: "",
-          frequency: "As directed",
-          duration: "",
-          notes: ""
-        }));
-        if (parsedMeds.length > 0) setMedications(parsedMeds);
+        const parsed = medsMatch[1]
+          .split("\n")
+          .filter((l) => l.trim().length > 0)
+          .map((line, idx) => ({
+            ...blank(`${Date.now()}${idx}`),
+            name: line.replace(/^-/, "").trim(),
+            frequency: "As directed",
+          }));
+        if (parsed.length > 0) setMedications(parsed);
       }
     }
   }, [llmDraft, isVerified]);
 
-  const addMed = () => {
-    setMedications([...medications, { id: Date.now().toString(), name: "", dosage: "", frequency: "1x daily", duration: "", notes: "" }]);
-  };
+  const updateMed = (id: string, key: keyof Medication, value: string) =>
+    setMedications(medications.map((m) => (m.id === id ? { ...m, [key]: value } : m)));
 
-  const removeMed = (id: string) => {
-    if (medications.length > 1) {
-      setMedications(medications.filter(m => m.id !== id));
-    }
-  };
-
-  const updateMed = (id: string, field: keyof Medication, value: string) => {
-    setMedications(medications.map(m => m.id === id ? { ...m, [field]: value } : m));
-  };
-
-  const saveDraft = async () => {
-    if (!prescriptionId) return;
+  /** Returns true only if the backend accepted the save. */
+  const saveDraft = async (): Promise<boolean> => {
+    if (!prescriptionId) return false;
+    setError("");
     setIsSaving(true);
     try {
-      await fetch(`/api/proxy/prescriptions/${prescriptionId}`, {
+      const res = await fetch(`/api/proxy/prescriptions/${prescriptionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          final_prescription: { medications, generalAdvice, followUpNotes }
-        })
+        body: JSON.stringify({ final_prescription: { medications, generalAdvice, followUpNotes } }),
       });
+      if (!res.ok) throw new Error(String(res.status));
       setLastSaved(new Date());
-    } catch (e) {
-      console.error(e);
+      return true;
+    } catch {
+      setError("Couldn't save the draft. Nothing was sent to the patient.");
+      return false;
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const verifyAndSend = async () => {
     if (!prescriptionId) return;
-    if (!window.confirm("This will make the prescription visible to the patient. Continue?")) return;
-    
-    // Auto-save first
-    await saveDraft();
-    
+    // Never verify something that failed to save: the patient would see the old text.
+    if (!(await saveDraft())) {
+      setConfirming(false);
+      return;
+    }
     setIsSaving(true);
     try {
-      await fetch(`/api/proxy/prescriptions/${prescriptionId}/verify`, {
-        method: "POST"
-      });
-      alert("Prescription verified successfully!");
-      router.refresh();
-    } catch (e) {
-      alert("Error verifying prescription");
+      const res = await fetch(`/api/proxy/prescriptions/${prescriptionId}/verify`, { method: "POST" });
+      if (!res.ok) throw new Error(String(res.status));
+      toast.success("Prescription verified and sent to the patient");
+      setConfirming(false);
+      onVerified?.();
+    } catch {
+      setError("Couldn't verify the prescription. It has not been sent.");
+      setConfirming(false);
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   if (isVerified) {
     return (
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 text-emerald-400 mb-4">
-          <ShieldCheck className="w-5 h-5" />
-          <span className="font-semibold">Prescription Verified & Sent</span>
-        </div>
-        <p className="text-text-secondary text-sm">This prescription is finalized and locked.</p>
-      </div>
+      <section className="card-dark">
+        <p className="verified-badge mb-3">Verified and sent</p>
+        <p className="text-text-muted text-sm">This prescription is final and visible to the patient.</p>
+      </section>
     );
   }
 
   return (
-    <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
-      <div className="p-4 bg-[#1E293B] border-b border-border flex justify-between items-center">
-        <h3 className="font-bold text-text-primary">Prescription Editor</h3>
-        {lastSaved && <span className="text-xs text-text-muted">Saved: {lastSaved.toLocaleTimeString()}</span>}
+    <section
+      className="bg-surface border border-border rounded-2xl shadow-card overflow-hidden"
+      aria-labelledby="rx-title"
+    >
+      <div className="px-6 py-4 border-b border-border flex justify-between items-center">
+        <h2 id="rx-title" className={sectionLabel}>
+          Prescription
+        </h2>
+        {lastSaved && (
+          <span className="text-xs text-text-muted tabular" aria-live="polite">
+            Saved {lastSaved.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Raw LLM Draft reference */}
-        <div className="bg-[#0F172A] p-4 rounded-lg text-sm text-text-secondary whitespace-pre-wrap border border-[#1E293B]">
-          <span className="text-doctor-accent font-semibold block mb-2">AI Draft Recommendation:</span>
+      <div className="p-6 space-y-7">
+        <div className="bg-background p-4 rounded-lg text-sm text-text-muted whitespace-pre-wrap border border-border">
+          <span className="text-doctor-accent font-medium block mb-2">
+            AI draft. Check every line before sending.
+          </span>
           {llmDraft?.draft}
         </div>
 
-        {/* Medications */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h4 className="font-semibold text-text-primary text-sm uppercase tracking-wider">Medications</h4>
-            <button onClick={addMed} className="text-doctor-accent hover:text-white flex items-center gap-1 text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> Add Row
+            <h3 className={sectionLabel}>Medications</h3>
+            <button
+              type="button"
+              onClick={() => setMedications([...medications, blank(String(Date.now()))])}
+              className="text-sm text-doctor-accent hover:underline underline-offset-4"
+            >
+              Add medication
             </button>
           </div>
-          
+
           <div className="space-y-3">
             {medications.map((med, idx) => (
-              <div key={med.id} className="grid grid-cols-12 gap-3 bg-[#1E293B] p-3 rounded-lg border border-border relative group">
+              <fieldset
+                key={med.id}
+                className="grid grid-cols-12 gap-3 bg-surface-raised/50 p-3 rounded-lg border border-border"
+              >
+                <legend className="sr-only">Medication {idx + 1}</legend>
                 <div className="col-span-12 md:col-span-4">
-                  <input type="text" placeholder="Drug Name" value={med.name} onChange={(e) => updateMed(med.id, "name", e.target.value)} className="w-full bg-[#0F172A] border border-border rounded px-3 py-1.5 text-sm" />
+                  <input
+                    aria-label={`Medication ${idx + 1} name`}
+                    type="text"
+                    placeholder="Drug name"
+                    value={med.name}
+                    onChange={(e) => updateMed(med.id, "name", e.target.value)}
+                    className={field}
+                  />
                 </div>
                 <div className="col-span-6 md:col-span-2">
-                  <input type="text" placeholder="Dosage" value={med.dosage} onChange={(e) => updateMed(med.id, "dosage", e.target.value)} className="w-full bg-[#0F172A] border border-border rounded px-3 py-1.5 text-sm" />
+                  <input
+                    aria-label={`Medication ${idx + 1} dosage`}
+                    type="text"
+                    placeholder="Dosage"
+                    value={med.dosage}
+                    onChange={(e) => updateMed(med.id, "dosage", e.target.value)}
+                    className={`${field} tabular`}
+                  />
                 </div>
                 <div className="col-span-6 md:col-span-3">
-                  <select value={med.frequency} onChange={(e) => updateMed(med.id, "frequency", e.target.value)} className="w-full bg-[#0F172A] border border-border rounded px-3 py-1.5 text-sm">
-                    <option>1x daily</option>
-                    <option>2x daily</option>
-                    <option>3x daily</option>
-                    <option>As needed</option>
-                    <option>As directed</option>
+                  <select
+                    aria-label={`Medication ${idx + 1} frequency`}
+                    value={med.frequency}
+                    onChange={(e) => updateMed(med.id, "frequency", e.target.value)}
+                    className={field}
+                  >
+                    {["1x daily", "2x daily", "3x daily", "As needed", "As directed"].map((f) => (
+                      <option key={f}>{f}</option>
+                    ))}
                   </select>
                 </div>
-                <div className="col-span-10 md:col-span-2">
-                  <input type="text" placeholder="Duration" value={med.duration} onChange={(e) => updateMed(med.id, "duration", e.target.value)} className="w-full bg-[#0F172A] border border-border rounded px-3 py-1.5 text-sm" />
+                <div className="col-span-8 md:col-span-2">
+                  <input
+                    aria-label={`Medication ${idx + 1} duration`}
+                    type="text"
+                    placeholder="Duration"
+                    value={med.duration}
+                    onChange={(e) => updateMed(med.id, "duration", e.target.value)}
+                    className={`${field} tabular`}
+                  />
                 </div>
-                <div className="col-span-2 md:col-span-1 flex justify-center items-center">
-                  <button onClick={() => removeMed(med.id)} disabled={medications.length === 1} className="text-red-400 hover:text-red-300 disabled:opacity-30">
-                    <X className="w-5 h-5" />
+                <div className="col-span-4 md:col-span-1 flex justify-end items-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      medications.length > 1 &&
+                      setMedications(medications.filter((m) => m.id !== med.id))
+                    }
+                    disabled={medications.length === 1}
+                    aria-label={`Remove medication ${idx + 1}`}
+                    className="text-sm text-severe-soft hover:underline underline-offset-4 disabled:opacity-30 disabled:no-underline"
+                  >
+                    Remove
                   </button>
                 </div>
                 <div className="col-span-12">
-                  <input type="text" placeholder="Additional instructions..." value={med.notes} onChange={(e) => updateMed(med.id, "notes", e.target.value)} className="w-full bg-[#0F172A] border border-border rounded px-3 py-1.5 text-sm" />
+                  <input
+                    aria-label={`Medication ${idx + 1} instructions`}
+                    type="text"
+                    placeholder="Extra instructions"
+                    value={med.notes}
+                    onChange={(e) => updateMed(med.id, "notes", e.target.value)}
+                    className={field}
+                  />
                 </div>
-              </div>
+              </fieldset>
             ))}
           </div>
         </div>
 
-        {/* General Advice */}
         <div>
-          <h4 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-2">General Advice</h4>
-          <textarea 
+          <label htmlFor="rx-advice" className={`${sectionLabel} block mb-2`}>
+            General advice
+          </label>
+          <textarea
+            id="rx-advice"
             value={generalAdvice}
             onChange={(e) => setGeneralAdvice(e.target.value)}
-            className="w-full h-24 bg-[#1E293B] border border-border rounded-lg p-3 text-sm"
-            placeholder="Rest, hydration, specific things to watch out for..."
+            className={`${field} h-24 resize-y`}
           />
         </div>
 
-        {/* Follow Up */}
         <div>
-          <h4 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-2">Follow-up Notes</h4>
-          <textarea 
+          <label htmlFor="rx-follow" className={`${sectionLabel} block mb-2`}>
+            Follow-up notes
+          </label>
+          <textarea
+            id="rx-follow"
             value={followUpNotes}
             onChange={(e) => setFollowUpNotes(e.target.value)}
-            className="w-full h-16 bg-[#1E293B] border border-border rounded-lg p-3 text-sm"
-            placeholder="When to return, what symptoms require ER..."
+            className={`${field} h-16 resize-y`}
           />
         </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="text-sm text-severe-soft bg-severe-bg border border-severe/30 rounded-lg px-3.5 py-2.5"
+          >
+            {error}
+          </p>
+        )}
       </div>
 
-      <div className="p-4 bg-[#1E293B] border-t border-border flex justify-between">
-        <button 
-          onClick={saveDraft}
+      <div className="px-6 py-4 border-t border-border flex flex-wrap justify-between items-center gap-3">
+        <button
+          type="button"
+          onClick={() => saveDraft()}
           disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0F172A] text-text-primary rounded-lg text-sm font-medium hover:bg-black transition-colors"
+          className="btn-outline-light text-sm !py-2 disabled:opacity-40"
         >
-          <Save className="w-4 h-4" /> Save Draft
+          Save draft
         </button>
-        <button 
-          onClick={verifyAndSend}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2 bg-doctor-accent text-white rounded-lg text-sm font-medium hover:bg-sky-500 transition-colors shadow-lg shadow-doctor-accent/20"
-        >
-          <ShieldCheck className="w-4 h-4" /> Verify & Send to Patient
-        </button>
+
+        {confirming ? (
+          <div className="flex items-center gap-3" role="group" aria-label="Confirm sending">
+            <span className="text-sm text-text-muted">The patient will see this.</span>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={isSaving}
+              className="text-sm text-text-muted hover:text-text-primary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={verifyAndSend}
+              disabled={isSaving}
+              className="btn-primary text-sm !py-2 disabled:opacity-50"
+            >
+              {isSaving ? "Sending…" : "Confirm and send"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            disabled={isSaving}
+            className="btn-primary text-sm !py-2 disabled:opacity-50"
+          >
+            Verify and send to patient
+          </button>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

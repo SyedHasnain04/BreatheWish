@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Calendar, Clock } from "lucide-react";
+
 
 interface FollowUp {
   id: string;
@@ -23,7 +23,9 @@ export default function FollowUpCard({ caseId }: Props) {
       try {
         const res = await fetch(`/api/proxy/follow-up/${caseId}`);
         if (res.ok) setFollowUps(await res.json());
-      } catch {}
+      } catch {
+        /* silent failure on background fetch */
+      }
       setLoading(false);
     };
     fetchFollowUps();
@@ -46,24 +48,34 @@ export default function FollowUpCard({ caseId }: Props) {
   };
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <div className="bg-patient-surface border border-patient-border rounded-xl overflow-hidden shadow-sm">
+    <section className="bg-patient-surface border border-patient-border rounded-xl overflow-hidden shadow-sm">
       {/* Upcoming */}
       {upcoming.length > 0 && (
-        <div className="bg-patient-accent p-5 flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-            <Calendar className="w-6 h-6 text-white" />
+        <div className="bg-patient-accent p-5 flex flex-wrap items-center justify-between gap-4 text-white">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8 2v4" />
+                <path d="M16 2v4" />
+                <rect width="18" height="18" x="3" y="4" rx="2" />
+                <path d="M3 10h18" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-white/80 text-xs font-medium uppercase tracking-wider">Scheduled Follow-up</p>
+              <p className="text-white font-semibold text-lg font-mono tabular">{formatDate(upcoming[0].scheduled_date)}</p>
+              {upcoming[0].reason && <p className="text-white/80 text-xs mt-0.5">{upcoming[0].reason}</p>}
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-white/80 text-sm font-medium">Next Follow-up</p>
-            <p className="text-white font-bold text-xl">{formatDate(upcoming[0].scheduled_date)}</p>
-            {upcoming[0].reason && <p className="text-white/70 text-sm mt-0.5">{upcoming[0].reason}</p>}
-          </div>
-          <div className="text-right">
-            <div className="bg-white/20 text-white text-sm font-semibold px-3 py-1.5 rounded-full flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
+          <div>
+            <div className="bg-white/20 text-white text-xs font-medium font-mono tabular px-2.5 py-1 rounded-md flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
               {getDaysRemaining(upcoming[0].scheduled_date)}
             </div>
           </div>
@@ -73,17 +85,21 @@ export default function FollowUpCard({ caseId }: Props) {
       {/* Past */}
       {past.length > 0 && (
         <div className="p-5">
-          <h4 className="text-sm font-semibold text-text-dark-muted uppercase tracking-wider mb-3">Past Follow-ups</h4>
+          <h4 className="text-xs font-semibold text-text-dark-muted uppercase tracking-wider mb-2.5">
+            Past Follow-ups
+          </h4>
           <div className="space-y-2">
             {past.map((f) => (
-              <div key={f.id} className="flex justify-between items-center text-sm">
-                <span className="text-text-dark">{formatDate(f.scheduled_date)}</span>
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">{f.status}</span>
+              <div key={f.id} className="flex justify-between items-center text-xs py-1 border-b border-patient-border last:border-0">
+                <span className="text-text-dark font-mono tabular">{formatDate(f.scheduled_date)}</span>
+                <span className="text-[11px] font-mono bg-patient-bg text-text-dark-muted border border-patient-border px-2 py-0.5 rounded-md capitalize">
+                  {f.status}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

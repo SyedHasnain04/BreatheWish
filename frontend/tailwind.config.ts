@@ -1,61 +1,72 @@
 import type { Config } from 'tailwindcss'
 
+/**
+ * One neutral family (green-tinted) and one accent (muted teal).
+ * Token names are unchanged so existing dashboard/case pages pick up the
+ * new palette without edits.
+ */
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Base
-        background: '#0F172A',        // deep navy (hero + doctor)
-        surface: '#1E293B',
-        border: '#334155',
-        
-        // Patient warm palette
-        'patient-bg': '#FAFAF9',
+        // Dark base (landing + doctor)
+        background: '#0B1113',
+        surface: '#121A1D',
+        'surface-raised': '#182226',
+        border: '#25333A',
+
+        // Light base (patient)
+        'patient-bg': '#F6F8F7',
         'patient-surface': '#FFFFFF',
-        'patient-border': '#E7E5E4',
-        
-        // Primary
-        primary: '#1D4ED8',
-        'primary-hover': '#1E40AF',
-        'primary-light': '#EFF6FF',
-        
-        // Doctor accent
-        'doctor-accent': '#38BDF8',
-        
-        // Patient accent
-        'patient-accent': '#0D9488',
-        
+        'patient-border': '#E1E7E5',
+
+        // Single accent
+        primary: '#1F7A72',
+        'primary-hover': '#186660',
+        'primary-light': '#E8F1EF',
+        'doctor-accent': '#6FB5AC',
+        'patient-accent': '#1F7A72',
+
         // Text
-        'text-primary': '#F1F5F9',
-        'text-muted': '#94A3B8',
-        'text-dark': '#0F172A',
-        'text-dark-muted': '#64748B',
-        
-        // Severity
-        severe: '#DC2626',
-        'severe-soft': '#F87171',
-        'severe-bg': '#450A0A',
-        moderate: '#D97706',
-        'moderate-soft': '#FBBF24',
-        'moderate-bg': '#451A03',
-        mild: '#16A34A',
-        'mild-soft': '#4ADE80',
-        'mild-bg': '#052E16',
-        
+        'text-primary': '#EAF0EE',
+        'text-muted': '#8A9A9C',
+        'text-dark': '#14201F',
+        'text-dark-muted': '#5B6B69',
+
+        // Severity (semantic, desaturated)
+        severe: '#C24545',
+        'severe-soft': '#E58A85',
+        'severe-bg': '#2A1214',
+        moderate: '#B8791F',
+        'moderate-soft': '#E0B25C',
+        'moderate-bg': '#2A1D0B',
+        mild: '#3F8F5B',
+        'mild-soft': '#7CC79A',
+        'mild-bg': '#0E2418',
+
         // States
-        verified: '#0D9488',
-        'verified-bg': '#042F2E',
-        'second-opinion': '#4F46E5',
-        'ai-badge': '#334155',
+        verified: '#5FB3A8',
+        'verified-bg': '#0F2624',
+        'second-opinion': '#6B7FA8',
+        'ai-badge': '#25333A',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
       },
       fontSize: {
-        hero: ['4rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
-        'hero-sub': ['1.25rem', { lineHeight: '1.6' }],
+        hero: ['clamp(2.75rem, 6.2vw, 5.25rem)', { lineHeight: '1.02', letterSpacing: '-0.035em', fontWeight: '600' }],
+        'hero-sub': ['1.125rem', { lineHeight: '1.65' }],
+      },
+      boxShadow: {
+        // Tinted to the background hue, not neutral black
+        card: '0 1px 0 0 rgba(234,240,238,0.04) inset, 0 12px 32px -12px rgba(2,10,10,0.7)',
+        'card-light': '0 1px 2px rgba(20,32,31,0.04), 0 8px 24px -12px rgba(20,60,55,0.18)',
+        scan: '0 0 24px rgba(111,181,172,0.35)',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
       animation: {
         'scan-line': 'scanLine 3s ease-in-out infinite',

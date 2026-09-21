@@ -3,18 +3,25 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "a-very-secure-random-secret-key-123" });
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("Missing NEXTAUTH_SECRET environment variable.");
+  }
+
+  const token = await getToken({ req, secret });
   const path = req.nextUrl.pathname;
 
   if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (path.startsWith("/doctor") && (token as any).role !== "doctor") {
+  const userRole = token.role as string | undefined;
+
+  if (path.startsWith("/doctor") && userRole !== "doctor") {
     return NextResponse.redirect(new URL("/patient/dashboard", req.url));
   }
 
-  if (path.startsWith("/patient") && (token as any).role !== "patient") {
+  if (path.startsWith("/patient") && userRole !== "patient") {
     return NextResponse.redirect(new URL("/doctor/dashboard", req.url));
   }
 

@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck } from "lucide-react";
 
-interface Medication {
+export interface Medication {
   name: string;
   dosage: string;
   frequency: string;
@@ -11,16 +10,12 @@ interface Medication {
   notes?: string;
 }
 
-interface PrescriptionData {
+export interface PrescriptionData {
   id: string;
+  case_id?: string;
   is_verified: boolean;
-  verified_at: string | null;
-  final_prescription: {
-    medications?: Medication[];
-    generalAdvice?: string;
-    followUpNotes?: string;
-    draft?: string;
-  };
+  verified_at?: string | null;
+  final_prescription?: unknown;
   doctor_name?: string;
 }
 
@@ -29,84 +24,97 @@ interface Props {
 }
 
 export default function PrescriptionCard({ prescription }: Props) {
-  // Hard rule: never render if not verified
   if (!prescription || !prescription.is_verified) return null;
 
   const { final_prescription, verified_at, doctor_name } = prescription;
-  const medications: Medication[] = final_prescription?.medications || [];
-  const generalAdvice = final_prescription?.generalAdvice || "";
-  const followUpNotes = final_prescription?.followUpNotes || "";
-  const draft = final_prescription?.draft || "";
+  // Typecast or extract safe fields
+  const safeFinal = (final_prescription || {}) as {
+    medications?: Medication[];
+    generalAdvice?: string;
+    followUpNotes?: string;
+    draft?: string;
+  };
+
+  const medications = safeFinal?.medications || [];
+  const generalAdvice = safeFinal?.generalAdvice || "";
+  const followUpNotes = safeFinal?.followUpNotes || "";
+  const draft = safeFinal?.draft || "";
 
   return (
-    <div className="bg-white border border-patient-border rounded-xl shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="bg-patient-accent px-6 py-4 flex items-center justify-between">
+    <section className="bg-patient-surface border border-patient-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-patient-accent px-5 py-3.5 flex items-center justify-between text-white">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-white" />
-          <span className="font-semibold text-white text-lg">Your Prescription</span>
+          <svg className="w-5 h-5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <h3 className="font-semibold text-white text-base">Verified Prescription</h3>
         </div>
         <div className="text-right">
-          <p className="text-white/90 text-sm font-medium">{doctor_name ? `Dr. ${doctor_name}` : "Your Doctor"}</p>
+          <p className="text-white/95 text-xs font-medium">{doctor_name ? `Dr. ${doctor_name}` : "Attending Physician"}</p>
           {verified_at && (
-            <p className="text-white/70 text-xs">{new Date(verified_at).toLocaleDateString()}</p>
+            <p className="text-white/75 text-[11px] font-mono tabular tracking-tight">
+              {new Date(verified_at).toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
           )}
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Medications */}
+      <div className="p-5 sm:p-6 space-y-5">
         {medications.length > 0 ? (
           <div>
-            <h4 className="text-sm font-semibold text-text-dark uppercase tracking-wider mb-3">Medications</h4>
-            <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-text-dark uppercase tracking-wider mb-2.5">Prescribed Medications</h4>
+            <div className="space-y-2.5">
               {medications.map((med, idx) => (
-                <div key={idx} className="bg-patient-bg border border-patient-border rounded-lg p-4">
-                  <div className="flex flex-wrap justify-between items-start gap-2">
-                    <span className="font-semibold text-text-dark">{med.name || "—"}</span>
-                    <span className="text-sm text-patient-accent font-medium">{med.dosage}</span>
+                <div key={idx} className="bg-patient-bg border border-patient-border rounded-lg p-3.5">
+                  <div className="flex flex-wrap justify-between items-baseline gap-2">
+                    <span className="font-medium text-text-dark text-sm">{med.name || "—"}</span>
+                    <span className="text-xs font-semibold font-mono tabular text-patient-accent">{med.dosage}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-text-dark-muted">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-text-dark-muted font-mono tabular">
                     {med.frequency && <span>{med.frequency}</span>}
                     {med.duration && <span>· {med.duration}</span>}
                   </div>
-                  {med.notes && (
-                    <p className="mt-1 text-xs text-gray-500 italic">{med.notes}</p>
-                  )}
+                  {med.notes && <p className="mt-1 text-xs text-text-dark-muted italic">{med.notes}</p>}
                 </div>
               ))}
             </div>
           </div>
         ) : draft ? (
           <div>
-            <h4 className="text-sm font-semibold text-text-dark uppercase tracking-wider mb-3">Prescription</h4>
-            <div className="bg-patient-bg border border-patient-border rounded-lg p-4 text-sm whitespace-pre-wrap text-text-dark">
+            <h4 className="text-xs font-semibold text-text-dark uppercase tracking-wider mb-2">Instructions</h4>
+            <div className="bg-patient-bg border border-patient-border rounded-lg p-3.5 text-xs whitespace-pre-wrap text-text-dark leading-relaxed">
               {draft}
             </div>
           </div>
         ) : null}
 
-        {/* General Advice */}
         {generalAdvice && (
           <div>
-            <h4 className="text-sm font-semibold text-text-dark uppercase tracking-wider mb-2">General Advice</h4>
-            <p className="text-sm text-text-dark-muted bg-patient-bg border border-patient-border rounded-lg p-4">{generalAdvice}</p>
+            <h4 className="text-xs font-semibold text-text-dark uppercase tracking-wider mb-1.5">General Advice</h4>
+            <p className="text-xs text-text-dark-muted bg-patient-bg border border-patient-border rounded-lg p-3.5 leading-relaxed">
+              {generalAdvice}
+            </p>
           </div>
         )}
 
-        {/* Follow-up */}
         {followUpNotes && (
           <div>
-            <h4 className="text-sm font-semibold text-text-dark uppercase tracking-wider mb-2">Follow-up</h4>
-            <p className="text-sm text-text-dark-muted bg-patient-bg border border-patient-border rounded-lg p-4">{followUpNotes}</p>
+            <h4 className="text-xs font-semibold text-text-dark uppercase tracking-wider mb-1.5">Follow-up Notes</h4>
+            <p className="text-xs text-text-dark-muted bg-patient-bg border border-patient-border rounded-lg p-3.5 leading-relaxed">
+              {followUpNotes}
+            </p>
           </div>
         )}
 
-        {/* Disclaimer */}
-        <p className="text-xs text-gray-400 text-center border-t border-patient-border pt-4">
-          AI assisted — reviewed and verified by your doctor. Do not self-medicate. Contact your doctor with any concerns.
+        <p className="text-[11px] text-text-dark-muted text-center border-t border-patient-border pt-4">
+          AI assisted — reviewed and verified by your physician. Contact your clinic immediately with any adverse reactions or questions.
         </p>
       </div>
-    </div>
+    </section>
   );
 }

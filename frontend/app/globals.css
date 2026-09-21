@@ -1,62 +1,105 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --scan-glow: 0 0 20px rgba(56, 189, 248, 0.4);
-    --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    --scan-glow: 0 0 24px rgba(111, 181, 172, 0.35);
   }
 
-  /* Doctor theme (dark) */
   [data-theme="doctor"] {
-    --bg: #0F172A;
-    --surface: #1E293B;
-    --border: #334155;
-    --text: #F1F5F9;
-    --text-muted: #94A3B8;
-    --accent: #38BDF8;
+    --bg: #0B1113;
+    --surface: #121A1D;
+    --border: #25333A;
+    --text: #EAF0EE;
+    --text-muted: #8A9A9C;
+    --accent: #6FB5AC;
   }
 
-  /* Patient theme (warm) */
   [data-theme="patient"] {
-    --bg: #FAFAF9;
+    --bg: #F6F8F7;
     --surface: #FFFFFF;
-    --border: #E7E5E4;
-    --text: #1C1917;
-    --text-muted: #78716C;
-    --accent: #0D9488;
+    --border: #E1E7E5;
+    --text: #14201F;
+    --text-muted: #5B6B69;
+    --accent: #1F7A72;
   }
 
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-background text-text-primary;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+
+  /* Visible keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid #6FB5AC;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection { background: rgba(111, 181, 172, 0.3); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
+  /* Badges: tighter radius than the old pills, one shape across the app */
   .severity-badge-severe {
-    @apply bg-severe-bg text-severe-soft border border-severe/30 px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-severe-bg text-severe-soft border border-severe/30 px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide;
   }
   .severity-badge-moderate {
-    @apply bg-moderate-bg text-moderate-soft border border-moderate/30 px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-moderate-bg text-moderate-soft border border-moderate/30 px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide;
   }
   .severity-badge-mild {
-    @apply bg-mild-bg text-mild-soft border border-mild/30 px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-mild-bg text-mild-soft border border-mild/30 px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide;
   }
   .verified-badge {
-    @apply bg-verified-bg text-verified border border-verified/30 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1;
+    @apply bg-verified-bg text-verified border border-verified/30 px-2.5 py-0.5 rounded-md text-xs font-medium inline-flex items-center gap-1.5;
   }
+
+  /* Surfaces: inner elements tighter, containers softer */
   .card-dark {
-    @apply bg-surface border border-border rounded-xl p-6 shadow-lg;
+    @apply bg-surface border border-border rounded-2xl p-6 shadow-card;
   }
   .card-light {
-    @apply bg-white border border-patient-border rounded-xl p-6 shadow-sm;
+    @apply bg-white border border-patient-border rounded-2xl p-6 shadow-card-light;
   }
+
   .btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200;
+    @apply inline-flex items-center justify-center bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-lg font-medium
+      transition duration-200 ease-spring hover:-translate-y-px active:translate-y-px active:scale-[0.98];
   }
   .btn-outline-light {
-    @apply border border-white/30 text-white hover:bg-white/10 px-6 py-3 rounded-lg font-medium transition-colors duration-200;
+    @apply inline-flex items-center justify-center border border-text-primary/20 text-text-primary hover:bg-text-primary/5 hover:border-text-primary/40 px-6 py-3 rounded-lg font-medium
+      transition duration-200 ease-spring active:scale-[0.98];
   }
+  .link-quiet {
+    @apply text-text-muted hover:text-text-primary underline underline-offset-4 decoration-border hover:decoration-text-muted transition-colors duration-200;
+  }
+
+  /* Static grain to break up flat fills. Apply to a positioned parent. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .tabular { font-variant-numeric: tabular-nums; }
 }

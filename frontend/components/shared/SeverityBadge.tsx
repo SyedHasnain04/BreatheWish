@@ -7,9 +7,14 @@ interface Props {
 
 export default function SeverityBadge({ severity }: Props) {
   if (severity === "none") {
-    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Normal</span>;
+    return (
+      <span className="px-2.5 py-0.5 rounded-md text-xs font-medium tracking-wide bg-surface-raised text-text-muted border border-border">
+        Normal
+      </span>
+    );
   }
-const severityClasses = {
+
+  const severityClasses = {
     severe: "severity-badge-severe",
     moderate: "severity-badge-moderate",
     mild: "severity-badge-mild",

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { Bell, X, CheckCheck } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import type { SessionUser } from "@/types";
 
 interface Notification {
   id: string;
@@ -31,32 +32,46 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
-  const userId = (session?.user as any)?.id;
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const user = session?.user as SessionUser | undefined;
+  const userId = user?.id;
 
-  const fetchNotifs = async () => {
+  const fetchNotifs = useCallback(async () => {
     if (!userId) return;
     try {
       const res = await fetch(`/api/proxy/notifications/${userId}`);
       if (res.ok) setNotifs(await res.json());
-    } catch {}
-  };
+    } catch {
+      /* silent */
+    }
+  }, [userId]);
 
   useEffect(() => {
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 30000);
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [fetchNotifs]);
 
-  // Close on outside click
+  // Close on outside click or Escape key
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handleMouseDown = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   const unreadCount = notifs.filter((n) => !n.is_read).length;
 
@@ -64,75 +79,128 @@ export default function NotificationBell() {
     try {
       await fetch(`/api/proxy/notifications/${id}/read`, { method: "PATCH" });
       setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch {}
+    } catch {
+      /* silent */
+    }
   };
 
   const markAllRead = async () => {
     try {
-      await Promise.all(notifs.filter((n) => !n.is_read).map((n) => fetch(`/api/proxy/notifications/${n.id}/read`, { method: "PATCH" })));
+      await Promise.all(
+        notifs
+          .filter((n) => !n.is_read)
+          .map((n) => fetch(`/api/proxy/notifications/${n.id}/read`, { method: "PATCH" }))
+      );
       setNotifs((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch {}
+    } catch {
+      /* silent */
+    }
   };
 
   const handleClick = (notif: Notification) => {
     markRead(notif.id);
     setOpen(false);
     if (notif.entity_id) {
-      const role = (session?.user as any)?.role;
-      if (role === "doctor") router.push(`/case/${notif.entity_id}`);
-      else router.push(`/case/${notif.entity_id}`);
+      const role = user?.role;
+      if (role === "doctor") {
+        router.push(`/doctor/case/${notif.entity_id}`);
+      } else {
+        router.push(`/patient/case/${notif.entity_id}`);
+      }
     }
   };
 
   return (
     <div className="relative" ref={panelRef}>
       <button
+        ref={buttonRef}
+        type="button"
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-xl hover:bg-white/10 transition-colors"
-        aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+        className="relative p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-doctor-accent"
       >
-        <Bell className="w-5 h-5" />
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-severe-soft rounded-full" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-2xl shadow-2xl shadow-black/40 z-50 overflow-hidden">
+        <div
+          role="dialog"
+          aria-label="Notification center"
+          className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 z-50 overflow-hidden"
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="font-semibold text-text-primary text-sm">Notifications</span>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-raised/40">
+            <span className="font-semibold text-text-primary text-xs uppercase tracking-wider font-mono">
+              Notifications
+            </span>
+            <div className="flex items-center gap-3">
               {unreadCount > 0 && (
-                <button onClick={markAllRead} className="text-xs text-doctor-accent hover:underline flex items-center gap-1">
-                  <CheckCheck className="w-3 h-3" /> Mark all read
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs text-doctor-accent hover:underline flex items-center gap-1"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M18 6 7 17l-5-5" />
+                    <path d="m22 10-7.5 7.5L13 16" />
+                  </svg>
+                  <span>Mark all read</span>
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="text-text-muted hover:text-text-primary">
-                <X className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close notifications"
+                className="text-text-muted hover:text-text-primary p-0.5 rounded"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
               </button>
             </div>
           </div>
 
           {/* List */}
-          <div className="max-h-96 overflow-y-auto divide-y divide-border">
+          <div className="max-h-80 overflow-y-auto divide-y divide-border">
             {notifs.length === 0 ? (
-              <div className="py-10 text-center text-text-muted text-sm">You're all caught up.</div>
+              <div className="py-8 text-center text-text-muted text-xs">
+                No notifications right now.
+              </div>
             ) : (
               notifs.map((n) => (
                 <button
                   key={n.id}
+                  type="button"
                   onClick={() => handleClick(n)}
-                  className={`w-full text-left px-4 py-3 hover:bg-[#1E293B] transition-colors ${!n.is_read ? "bg-[#0F172A]" : ""}`}
+                  className={`w-full text-left px-4 py-3 hover:bg-surface-raised transition-colors ${
+                    !n.is_read ? "bg-background/40" : ""
+                  }`}
                 >
-                  <div className="flex items-start gap-2">
-                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-doctor-accent mt-1.5 flex-shrink-0" />}
-                    <div className={!n.is_read ? "" : "pl-4"}>
-                      <p className="text-sm font-medium text-text-primary leading-snug">{n.title}</p>
-                      <p className="text-xs text-text-muted mt-0.5 leading-snug line-clamp-2">{n.body}</p>
-                      <p className="text-[10px] text-text-muted mt-1">{timeAgo(n.created_at)}</p>
+                  <div className="flex items-start gap-2.5">
+                    {!n.is_read ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-doctor-accent mt-1.5 shrink-0" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-text-primary leading-snug truncate">
+                        {n.title}
+                      </p>
+                      <p className="text-xs text-text-muted mt-0.5 leading-snug line-clamp-2">
+                        {n.body}
+                      </p>
+                      <p className="text-[10px] font-mono tabular text-text-muted/70 mt-1">
+                        {timeAgo(n.created_at)}
+                      </p>
                     </div>
                   </div>
                 </button>

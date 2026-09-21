@@ -58,8 +58,27 @@ async def create_case(
             raise HTTPException(status_code=404, detail="Patient not found")
         target_patient_id = patient_user.id
 
-    image_bytes = await xray.read()
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".dcm"}
     
+    # Check filename extension
+    filename = (xray.filename or "").lower()
+    has_valid_ext = any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS)
+    if not has_valid_ext:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image format. Only PNG, JPEG, and DICOM radiographs are accepted."
+        )
+
+    image_bytes = await xray.read()
+    if len(image_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    if len(image_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File exceeds the 10 MB limit (received {len(image_bytes) / (1024*1024):.1f} MB)."
+        )
+
     # 3. ML Inference
     ml_result = run_inference(image_bytes)
     
@@ -236,6 +255,9 @@ def update_case_verdict(
     case = db.query(Case).filter(Case.id == id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+
+    if case.primary_doctor_id and str(case.primary_doctor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the assigned primary doctor can update this case verdict")
 
     if doctor_verdict is not None:
         case.doctor_verdict = doctor_verdict

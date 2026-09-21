@@ -12,10 +12,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     RESEND_API_KEY: str = ""
     ML_MODEL_PATH: str = "app/ml/weights/densenet121_chexnet.pth"
-    ML_WEIGHTS_PATH: str = "app/ml/weights"
+    ADMIN_SECRET_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-5-haiku-20241022"
 
     class Config:
-        env_file = "../.env"
+        env_file = (".env", "../.env")
         extra = "ignore"
 
 settings = Settings()

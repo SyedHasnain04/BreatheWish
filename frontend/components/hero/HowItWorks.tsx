@@ -2,63 +2,66 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Upload, Cpu, ShieldCheck } from "lucide-react";
 
 const steps = [
   {
-    icon: Upload,
-    title: "Upload X-Ray",
-    description: "Patient or doctor uploads a chest X-ray image securely to BreatheWish.",
+    title: "Upload the X-ray",
+    description:
+      "A patient or a doctor uploads a chest X-ray from a phone or a computer. Files are stored privately.",
   },
   {
-    icon: Cpu,
-    title: "AI Scans",
-    description: "Our DenseNet-121 model analyzes the image, producing a confidence score and Grad-CAM heatmap.",
+    title: "The model reads it",
+    description:
+      "DenseNet-121 returns a confidence score and a Grad-CAM heatmap showing which regions drove the result.",
   },
   {
-    icon: ShieldCheck,
-    title: "Doctor Verifies",
-    description: "A qualified doctor reviews the AI findings and issues a verified prescription. Always human in the loop.",
+    title: "A doctor reviews it",
+    description:
+      "A qualified doctor checks the AI read against the image, then signs off or overrides it and writes the prescription.",
   },
 ];
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 export default function HowItWorks() {
   return (
-    <section className="py-24 bg-background">
-      <div className="max-w-5xl mx-auto px-6">
-        <motion.h2
-          className="text-3xl font-bold text-text-primary text-center mb-16"
+    <section id="how-it-works" className="py-28 lg:py-36 bg-background scroll-mt-16">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8">
+        <motion.div
+          className="lg:col-span-4 lg:sticky lg:top-28 self-start"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, ease }}
         >
-          How BreatheWish Works
-        </motion.h2>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-doctor-accent mb-4">
+            How it works
+          </p>
+          <h2 className="text-4xl font-semibold tracking-tight text-text-primary leading-[1.1]">
+            Three steps, one of them human
+          </h2>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <ol className="lg:col-span-7 lg:col-start-6 divide-y divide-border border-y border-border">
           {steps.map((step, i) => (
-            <motion.div
-              key={i}
-              className="text-center"
-              initial={{ opacity: 0, y: 30 }}
+            <motion.li
+              key={step.title}
+              className="grid grid-cols-[3.5rem_1fr] gap-4 py-9"
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.2 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease }}
             >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-doctor-accent/20 to-primary/20 border border-doctor-accent/30 flex items-center justify-center mx-auto mb-5">
-                <step.icon className="w-7 h-7 text-doctor-accent" />
+              <span className="font-mono text-sm text-text-muted tabular pt-1">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h3 className="text-xl font-medium text-text-primary mb-2">{step.title}</h3>
+                <p className="text-text-muted leading-relaxed max-w-[56ch]">{step.description}</p>
               </div>
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-doctor-accent/20 text-doctor-accent text-xs font-bold flex items-center justify-center">
-                  {i + 1}
-                </span>
-                <h3 className="text-lg font-semibold text-text-primary">{step.title}</h3>
-              </div>
-              <p className="text-text-muted text-sm leading-relaxed">{step.description}</p>
-            </motion.div>
+            </motion.li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

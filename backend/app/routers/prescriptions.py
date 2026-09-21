@@ -59,6 +59,9 @@ def update_prescription(
     rx = db.query(Prescription).filter(Prescription.id == id).first()
     if not rx:
         raise HTTPException(status_code=404, detail="Prescription not found")
+
+    if rx.doctor_id and str(rx.doctor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the prescribing doctor can edit this draft")
         
     if rx.is_verified:
         raise HTTPException(status_code=400, detail="Cannot edit a verified prescription")
@@ -91,6 +94,9 @@ def verify_prescription(
     rx = db.query(Prescription).filter(Prescription.id == id).first()
     if not rx:
         raise HTTPException(status_code=404, detail="Prescription not found")
+
+    if rx.doctor_id and str(rx.doctor_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Only the prescribing doctor can verify this prescription")
         
     if rx.is_verified:
         return {"message": "Already verified", "id": rx.id}

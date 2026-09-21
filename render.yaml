@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: breathewish-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: breathewish-db
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_SECRET_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-3-5-haiku-20241022
+      - key: ML_MODEL_PATH
+        value: app/ml/weights/densenet121_chexnet.pth
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+databases:
+  - name: breathewish-db
+    plan: free
+    databaseName: pneumonia_db
+    user: user

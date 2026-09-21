@@ -6,62 +6,64 @@ import Link from "next/link";
 
 const benefits = [
   {
-    emoji: "📱",
     title: "Upload from anywhere",
-    description: "Securely upload your chest X-ray from your phone or computer. No hospital visit needed for the initial scan.",
+    description:
+      "Send your chest X-ray from a phone or a computer. No hospital visit is needed for the first read.",
   },
   {
-    emoji: "🌿",
-    title: "Calm, clear results",
-    description: "No confusing medical jargon. Your results are presented in simple, easy-to-understand language.",
+    title: "Results in plain language",
+    description:
+      "Your findings are written without the jargon, with clear next steps and a follow-up date.",
   },
   {
-    emoji: "✅",
-    title: "Doctor verified, always",
-    description: "Every AI finding is reviewed and verified by a qualified doctor before you see it. Your safety comes first.",
+    title: "A doctor signs off first",
+    description:
+      "An AI finding is never sent straight to you. A qualified doctor reviews it and verifies it before you see it.",
   },
 ];
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 export default function ForPatients() {
   return (
-    <section className="py-24 bg-patient-bg">
-      <div className="max-w-5xl mx-auto px-6">
+    <section id="patients" className="relative py-28 lg:py-36 bg-surface border-y border-border scroll-mt-16">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8">
         <motion.div
-          className="text-center mb-16"
+          className="lg:col-span-5"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6, ease }}
         >
-          <span className="text-patient-accent font-semibold text-sm uppercase tracking-wider">For Patients</span>
-          <h2 className="text-3xl font-bold text-text-dark mt-3">Your health, simplified</h2>
-          <p className="text-text-dark-muted mt-3 max-w-lg mx-auto">
-            BreatheWish makes pneumonia screening accessible, understandable, and always backed by real doctors.
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-doctor-accent mb-4">
+            For patients
           </p>
+          <h2 className="text-4xl font-semibold tracking-tight text-text-primary leading-[1.1] mb-5">
+            Your scan, explained
+          </h2>
+          <p className="text-text-muted max-w-[44ch] mb-9 leading-relaxed">
+            Pneumonia screening you can start from home, and always backed by a real doctor.
+          </p>
+          <Link href="/login" className="btn-primary">
+            Register as a patient
+          </Link>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <ul className="lg:col-span-6 lg:col-start-7 divide-y divide-border border-y border-border self-center">
           {benefits.map((b, i) => (
-            <motion.div
-              key={i}
-              className="card-light text-center"
-              initial={{ opacity: 0, y: 30 }}
+            <motion.li
+              key={b.title}
+              className="py-7"
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease }}
             >
-              <div className="text-3xl mb-4">{b.emoji}</div>
-              <h3 className="text-lg font-semibold text-text-dark mb-2">{b.title}</h3>
-              <p className="text-sm text-text-dark-muted leading-relaxed">{b.description}</p>
-            </motion.div>
+              <h3 className="text-lg font-medium text-text-primary mb-1.5">{b.title}</h3>
+              <p className="text-text-muted leading-relaxed max-w-[52ch]">{b.description}</p>
+            </motion.li>
           ))}
-        </div>
-
-        <div className="text-center">
-          <Link href="/login" className="inline-block bg-patient-accent hover:bg-teal-700 text-white px-8 py-3 rounded-lg font-medium transition-colors duration-200">
-            Register as Patient
-          </Link>
-        </div>
+        </ul>
       </div>
     </section>
   );

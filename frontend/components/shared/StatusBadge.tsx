@@ -1,27 +1,35 @@
 import React from "react";
-import { CaseStatus } from "../../types";
 
 interface Props {
-  status: CaseStatus;
+  status: string;
 }
 
 export default function StatusBadge({ status }: Props) {
-  const getStatusColor = () => {
-    switch (status) {
+  const norm = (status || "").toLowerCase().replace("-", "_");
+
+  const getBadgeClass = () => {
+    switch (norm) {
+      case "verified":
       case "completed":
-        return "bg-green-100 text-green-800 border-green-200";
+      case "closed":
+        return "bg-verified-bg text-verified border-verified/30";
       case "second_opinion":
-        return "bg-indigo-100 text-indigo-800 border-indigo-200";
+      case "second_opinion_requested":
+      case "second_opinion_received":
+        return "bg-surface-raised text-doctor-accent border-border";
       case "in_review":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "under_review":
+      case "pending":
+      case "prescription_draft":
+        return "bg-moderate-bg text-moderate-soft border-moderate/30";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-surface-raised text-text-muted border-border";
     }
   };
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor()} capitalize`}>
-      {status.replace("_", " ")}
+    <span className={`px-2 py-0.5 rounded-md text-xs font-mono tabular font-medium border ${getBadgeClass()} capitalize`}>
+      {norm.replace(/_/g, " ")}
     </span>
   );
 }

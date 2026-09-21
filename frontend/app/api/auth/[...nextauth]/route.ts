@@ -53,6 +53,8 @@ const { handlers } = NextAuth({
     }),
   ],
   callbacks: {
+    // NextAuth's callback types don't include our custom fields (role, accessToken, id).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
@@ -61,11 +63,12 @@ const { handlers } = NextAuth({
       }
       return token;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async session({ session, token }: any) {
       if (token && session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
-        (session as any).accessToken = token.accessToken as string;
+        (session as { accessToken?: string }).accessToken = token.accessToken as string;
       }
       return session;
     },
