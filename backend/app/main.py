@@ -23,6 +23,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Database table initialization notice: {e}")
 
+    # Seed initial test doctors & patients
+    try:
+        from seed import seed_db
+        seed_db()
+    except Exception as e:
+        print(f"Seed startup notice: {e}")
+
     # Start scheduler
     scheduler = None
     try:
