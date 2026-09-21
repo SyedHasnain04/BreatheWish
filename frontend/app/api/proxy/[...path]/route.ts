@@ -28,7 +28,7 @@ async function handler(req: NextRequest) {
     );
   }
 
-  const backend = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+  const backend = (process.env.BACKEND_URL || "https://breathewish-api.onrender.com").replace(/\/$/, "");
   // Keep the trailing slash: FastAPI treats /cases and /cases/ as different routes.
   const subpath = req.nextUrl.pathname.replace(/^\/api\/proxy/, "");
   const first = subpath.split("/").filter(Boolean)[0] ?? "";
@@ -78,6 +78,7 @@ async function handler(req: NextRequest) {
       headers,
       body,
       cache: "no-store",
+      signal: AbortSignal.timeout(25000),
     });
     const out = new Headers();
     const ct = upstream.headers.get("content-type");

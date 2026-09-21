@@ -95,13 +95,25 @@ async def create_case(
     if not assigned_doc_id:
         raise HTTPException(status_code=503, detail="No doctor available to review this case.")
         
-    # 8. LLM Draft
-    draft_prescription = generate_prescription_draft(
-        symptoms=symptoms_dict,
-        ml_result=ml_result,
-        patient_age=symptoms_dict.get("age", 30),
-        patient_weight=symptoms_dict.get("weight", 70.0)
-    )
+    # Check prior patient history: LLM triage suggestion is provided ONLY for the 1st visit
+    prior_cases_count = db.query(Case).filter(Case.patient_id == target_patient_id).count()
+    is_first_visit = (prior_cases_count == 0)
+
+    # 8. LLM Draft (1st visit only)
+    if is_first_visit:
+        draft_prescription = generate_prescription_draft(
+            symptoms=symptoms_dict,
+            ml_result=ml_result,
+            patient_age=symptoms_dict.get("age", 30),
+            patient_weight=symptoms_dict.get("weight", 70.0)
+        )
+        llm_payload = {"draft": draft_prescription, "is_first_visit": True}
+    else:
+        # Subsequent visit: No automated LLM suggestion provided. Physician evaluates directly.
+        llm_payload = {
+            "draft": "Follow-up visit: No automated LLM suggestion provided. Attending physician direct clinical evaluation required.",
+            "is_first_visit": False
+        }
 
     # 10. Create Case
     new_case = Case(
@@ -126,8 +138,8 @@ async def create_case(
     new_prescription = Prescription(
         case_id=new_case.id,
         doctor_id=assigned_doc_id,
-        llm_draft={"draft": draft_prescription},
-        final_prescription={"draft": draft_prescription},
+        llm_draft=llm_payload,
+        final_prescription=llm_payload,
         is_verified=False
     )
     db.add(new_prescription)

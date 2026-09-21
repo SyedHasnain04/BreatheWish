@@ -5,6 +5,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const { handlers } = NextAuth({
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -18,7 +19,7 @@ const { handlers } = NextAuth({
       async authorize(credentials) {
         if (!credentials) return null;
 
-        const backendUrl = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+        const backendUrl = (process.env.BACKEND_URL || "https://breathewish-api.onrender.com").replace(/\/$/, "");
         const isDoctor = credentials.role === "doctor" || Boolean(credentials.doctor_id);
 
         try {
@@ -34,6 +35,7 @@ const { handlers } = NextAuth({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ doctor_id: docId }),
               cache: "no-store",
+              signal: AbortSignal.timeout(25000),
             });
 
             // Fallback to standard OAuth2 form if needed
@@ -46,6 +48,7 @@ const { handlers } = NextAuth({
                   password: "doctor_id_login",
                 }),
                 cache: "no-store",
+                signal: AbortSignal.timeout(25000),
               });
             }
 
@@ -63,6 +66,7 @@ const { handlers } = NextAuth({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ username: identifier, password }),
               cache: "no-store",
+              signal: AbortSignal.timeout(25000),
             });
 
             // Fallback to standard OAuth2 form
@@ -75,6 +79,7 @@ const { handlers } = NextAuth({
                   password: password,
                 }),
                 cache: "no-store",
+                signal: AbortSignal.timeout(25000),
               });
             }
 
@@ -89,6 +94,7 @@ const { handlers } = NextAuth({
               Authorization: `Bearer ${tokens.access_token}`,
             },
             cache: "no-store",
+            signal: AbortSignal.timeout(25000),
           });
 
           if (!userRes.ok) return null;
