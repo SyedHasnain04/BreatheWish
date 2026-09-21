@@ -67,7 +67,25 @@ async function handler(req: NextRequest) {
       return NextResponse.json({ detail: "Invalid request" }, { status: 400 });
     }
   } else {
-    const token = await getToken({ req, secret });
+    const isSecure = req.url.startsWith("https://");
+    const cookieName = isSecure ? "__Secure-authjs.session-token" : "authjs.session-token";
+
+    let token = await getToken({
+      req,
+      secret,
+      salt: cookieName,
+      cookieName,
+    });
+
+    if (!token) {
+      const legacyCookie = isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+      token = await getToken({
+        req,
+        secret,
+        salt: legacyCookie,
+        cookieName: legacyCookie,
+      });
+    }
     const accessToken = (token as { accessToken?: string } | null)?.accessToken;
     if (!accessToken) {
       return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });

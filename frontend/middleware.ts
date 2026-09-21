@@ -8,7 +8,28 @@ export async function middleware(req: NextRequest) {
     throw new Error("Missing NEXTAUTH_SECRET environment variable.");
   }
 
-  const token = await getToken({ req, secret });
+  const isSecure = req.url.startsWith("https://");
+  const cookieName = isSecure ? "__Secure-authjs.session-token" : "authjs.session-token";
+
+  // Auth.js v5 uses the cookieName as salt
+  let token = await getToken({
+    req,
+    secret,
+    salt: cookieName,
+    cookieName,
+  });
+
+  // Fallback to legacy NextAuth v4 cookie if present
+  if (!token) {
+    const legacyCookie = isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+    token = await getToken({
+      req,
+      secret,
+      salt: legacyCookie,
+      cookieName: legacyCookie,
+    });
+  }
+
   const path = req.nextUrl.pathname;
 
   if (!token) {
