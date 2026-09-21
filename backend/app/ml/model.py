@@ -17,7 +17,7 @@ class PneumoniaModel(nn.Module):
 def load_model(weights_path: str = None) -> PneumoniaModel:
     model = PneumoniaModel()
     if weights_path is None:
-        weights_path = os.path.join(settings.ML_WEIGHTS_PATH, "densenet121_chexnet.pth")
+        weights_path = settings.ML_MODEL_PATH
     
     if os.path.exists(weights_path):
         state_dict = torch.load(weights_path, map_location=torch.device("cpu"))
