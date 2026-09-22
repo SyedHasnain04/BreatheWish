@@ -372,17 +372,29 @@ export default function NewCaseForm({ isDoctor = false }: Props) {
             <fieldset>
               <legend className={label}>Existing conditions</legend>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-                {CONDITIONS.map((c) => (
-                  <label key={c} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className={`w-4 h-4 ${t.accent}`}
-                      checked={formData.conditions.includes(c)}
-                      onChange={() => toggleCondition(c)}
-                    />
-                    {c}
-                  </label>
-                ))}
+                {CONDITIONS.map((c) => {
+                  const hasOthers = formData.conditions.length > 0 && !formData.conditions.includes("None");
+                  const hasNone = formData.conditions.includes("None");
+                  const isNone = c === "None";
+                  const disabled = (isNone && hasOthers) || (!isNone && hasNone);
+                  return (
+                    <label
+                      key={c}
+                      className={`flex items-center gap-2 text-sm ${
+                        disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className={`w-4 h-4 ${t.accent}`}
+                        checked={formData.conditions.includes(c)}
+                        disabled={disabled}
+                        onChange={() => toggleCondition(c)}
+                      />
+                      {c}
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
 

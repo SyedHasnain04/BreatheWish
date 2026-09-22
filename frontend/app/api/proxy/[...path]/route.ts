@@ -99,7 +99,7 @@ async function handler(req: NextRequest) {
       headers,
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(55000),
     });
     const out = new Headers();
     const ct = upstream.headers.get("content-type");
