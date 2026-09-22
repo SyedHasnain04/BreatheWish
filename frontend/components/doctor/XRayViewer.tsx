@@ -70,6 +70,9 @@ export default function XRayViewer({ originalUrl, gradcamUrl }: Props) {
           src={originalUrl}
           alt="Original chest radiograph"
           className="absolute inset-0 w-full h-full object-contain"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/chest-xray.png";
+          }}
         />
 
         {/* GradCAM Overlay */}
@@ -80,6 +83,9 @@ export default function XRayViewer({ originalUrl, gradcamUrl }: Props) {
             className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-200 ${
               viewMode === "blend" ? "mix-blend-overlay opacity-80" : "opacity-100"
             }`}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
         )}
 
@@ -139,6 +145,9 @@ export default function XRayViewer({ originalUrl, gradcamUrl }: Props) {
                 src={originalUrl}
                 alt="Enlarged chest radiograph"
                 className="absolute inset-0 w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/chest-xray.png";
+                }}
               />
               {gradcamUrl && (viewMode === "overlay" || viewMode === "blend") && (
                 <img
@@ -147,6 +156,9 @@ export default function XRayViewer({ originalUrl, gradcamUrl }: Props) {
                   className={`absolute inset-0 w-full h-full object-contain ${
                     viewMode === "blend" ? "mix-blend-overlay opacity-80" : "opacity-100"
                   }`}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
                 />
               )}
             </div>

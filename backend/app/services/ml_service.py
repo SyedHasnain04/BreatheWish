@@ -1,4 +1,11 @@
 import torch
+# Limit PyTorch to 1 CPU thread to prevent thread contention/lockup on cloud containers
+torch.set_num_threads(1)
+try:
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
+
 import torch.nn.functional as F
 from app.ml.model import load_model, PneumoniaModel
 from app.ml.preprocess import preprocess_image

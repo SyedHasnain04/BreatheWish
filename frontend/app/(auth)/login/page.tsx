@@ -20,10 +20,10 @@ export default function LoginPage() {
 
     const timer = setTimeout(() => {
       setError(
-        "Connecting took longer than 12 seconds. The server may still be waking up. Please try once more."
+        "Connecting took longer than 50 seconds. The server may still be waking up. Please try once more."
       );
       setLoading(false);
-    }, 12000);
+    }, 50000);
 
     try {
       let result;
@@ -42,7 +42,7 @@ export default function LoginPage() {
           username: cleanedId,
         });
       } else {
-        const cleanedUser = username.trim();
+        const cleanedUser = username.trim().toLowerCase();
         if (!cleanedUser || !password) {
           clearTimeout(timer);
           setError("Please enter both your username and password.");

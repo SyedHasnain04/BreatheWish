@@ -51,7 +51,7 @@ const { handlers } = NextAuth({
                 password: mappedPass,
               }),
               cache: "no-store",
-              signal: AbortSignal.timeout(20000),
+              signal: AbortSignal.timeout(50000),
             });
 
             if (!res.ok) {
@@ -61,7 +61,7 @@ const { handlers } = NextAuth({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ doctor_id: docId }),
                 cache: "no-store",
-                signal: AbortSignal.timeout(20000),
+                signal: AbortSignal.timeout(50000),
               });
             }
 
@@ -88,7 +88,7 @@ const { handlers } = NextAuth({
                 password: password,
               }),
               cache: "no-store",
-              signal: AbortSignal.timeout(20000),
+              signal: AbortSignal.timeout(50000),
             });
 
             if (!res.ok) {
@@ -96,9 +96,9 @@ const { handlers } = NextAuth({
               res = await fetch(`${backendUrl}/auth/login/patient`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: identifier, password }),
+                body: JSON.stringify({ username: identifier.toLowerCase(), password }),
                 cache: "no-store",
-                signal: AbortSignal.timeout(20000),
+                signal: AbortSignal.timeout(50000),
               });
             }
 

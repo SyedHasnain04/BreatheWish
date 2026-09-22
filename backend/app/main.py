@@ -20,6 +20,8 @@ async def lifespan(app: FastAPI):
             conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;"))
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username);"))
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_doctor_id ON users (doctor_id);"))
+            conn.execute(text("UPDATE cases SET xray_url = 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg' WHERE xray_url LIKE '%sample_xray.jpg%';"))
+            conn.execute(text("UPDATE cases SET gradcam_url = 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg' WHERE gradcam_url LIKE '%sample_gradcam.jpg%';"))
     except Exception as e:
         print(f"Database table initialization notice: {e}")
 

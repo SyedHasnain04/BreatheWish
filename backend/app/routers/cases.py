@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional, List
+from pydantic import BaseModel
 import json
 import uuid
 
@@ -20,10 +21,10 @@ from app.services.llm_service import generate_prescription_draft
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 @router.post("/test-inference")
-async def test_inference(xray: UploadFile = File(...)) -> Dict[str, Any]:
+def test_inference(xray: UploadFile = File(...)) -> Dict[str, Any]:
     """Temporary endpoint to test the ML pipeline end-to-end."""
     try:
-        image_bytes = await xray.read()
+        image_bytes = xray.file.read()
         ml_result = run_inference(image_bytes)
         gradcam_upload = upload_image(ml_result["gradcam_image"], folder="breathewish/gradcam")
         return {
@@ -35,8 +36,9 @@ async def test_inference(xray: UploadFile = File(...)) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("")
 @router.post("/")
-async def create_case(
+def create_case(
     xray: UploadFile = File(...),
     symptoms: str = Form(...),
     patient_email: Optional[str] = Form(None),
@@ -74,7 +76,7 @@ async def create_case(
             detail="Invalid image format. Only PNG, JPEG, and DICOM radiographs are accepted."
         )
 
-    image_bytes = await xray.read()
+    image_bytes = xray.file.read()
     if len(image_bytes) == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
     if len(image_bytes) > MAX_FILE_SIZE:
@@ -255,13 +257,17 @@ def get_case(id: str, db: Session = Depends(get_db), current_user: User = Depend
     return case_dict
 
 
+class VerdictUpdate(BaseModel):
+    doctor_verdict: Optional[str] = None
+    doctor_severity: Optional[str] = None
+    doctor_type: Optional[str] = None
+    doctor_notes: Optional[str] = None
+
+
 @router.patch("/{id}")
 def update_case_verdict(
     id: str,
-    doctor_verdict: Optional[str] = None,
-    doctor_severity: Optional[str] = None,
-    doctor_type: Optional[str] = None,
-    doctor_notes: Optional[str] = None,
+    body: VerdictUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -275,14 +281,18 @@ def update_case_verdict(
     if case.primary_doctor_id and str(case.primary_doctor_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Only the assigned primary doctor can update this case verdict")
 
-    if doctor_verdict is not None:
-        case.doctor_verdict = doctor_verdict
-    if doctor_severity is not None:
-        case.doctor_severity = doctor_severity
-    if doctor_type is not None:
-        case.doctor_type = doctor_type
-    if doctor_notes is not None:
-        case.doctor_notes = doctor_notes
+    if body.doctor_verdict is not None:
+        case.doctor_verdict = body.doctor_verdict
+    if body.doctor_severity is not None:
+        case.doctor_severity = body.doctor_severity
+    if body.doctor_type is not None:
+        case.doctor_type = body.doctor_type
+    if body.doctor_notes is not None:
+        case.doctor_notes = body.doctor_notes
+
+    # Update status to verified when a verdict is saved
+    if body.doctor_verdict:
+        case.status = "verified"
 
     db.commit()
     return {"message": "Verdict saved"}

@@ -27,6 +27,7 @@ class VerdictRequest(BaseModel):
     agrees_with_primary: bool
 
 
+@router.post("")
 @router.post("/")
 def request_second_opinion(
     body: SecondOpinionRequest,
@@ -87,7 +88,7 @@ def request_second_opinion(
 def get_second_opinion(case_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     so = db.query(SecondOpinion).filter(SecondOpinion.case_id == case_id).first()
     if not so:
-        raise HTTPException(status_code=404, detail="No second opinion found")
+        return None
     return {
         "id": so.id,
         "status": so.status,

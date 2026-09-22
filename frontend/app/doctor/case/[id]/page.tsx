@@ -117,15 +117,28 @@ export default function DoctorCasePage() {
     }
     setSavingVerdict(true);
     try {
-      // The backend reads these as query parameters, not a JSON body.
-      const qs = new URLSearchParams();
-      qs.set("doctor_verdict", verdict);
-      if (verdictSeverity) qs.set("doctor_severity", verdictSeverity);
-      if (verdictType) qs.set("doctor_type", verdictType);
-      if (doctorNotes) qs.set("doctor_notes", doctorNotes);
-      const res = await fetch(`/api/proxy/cases/${id}?${qs.toString()}`, { method: "PATCH" });
-      if (res.ok) toast.success("Verdict saved");
-      else setVerdictError("Couldn't save the verdict. Try again.");
+      const payload: Record<string, string> = { doctor_verdict: verdict };
+      if (verdictSeverity) payload.doctor_severity = verdictSeverity;
+      if (verdictType) payload.doctor_type = verdictType;
+      if (doctorNotes) payload.doctor_notes = doctorNotes;
+      const res = await fetch(`/api/proxy/cases/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success("Verdict saved");
+        setCaseData((prev) => prev ? {
+          ...prev,
+          doctor_verdict: verdict,
+          doctor_severity: verdictSeverity,
+          doctor_type: verdictType,
+          doctor_notes: doctorNotes,
+          status: "verified"
+        } : prev);
+      } else {
+        setVerdictError("Couldn't save the verdict. Try again.");
+      }
     } catch {
       setVerdictError("Network error. Try again.");
     } finally {
