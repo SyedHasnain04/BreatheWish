@@ -158,9 +158,9 @@ def _seed_demo_cases(db):
         print("Required seed users not found – skipping case seeding.")
         return
 
-    # Working Cloudinary sample images (always available)
-    placeholder_xray = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg"
-    placeholder_gradcam = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg"
+    # Authentic Cloudinary chest X-ray and PyTorch Grad-CAM images
+    placeholder_xray = "https://res.cloudinary.com/act3ugiy/image/upload/v1790138908/breathewish/demo/demo_chest_xray.jpg"
+    placeholder_gradcam = "https://res.cloudinary.com/act3ugiy/image/upload/v1790138910/breathewish/demo/demo_chest_gradcam.png"
 
     demo_cases = [
         # ── Ravi Kumar's cases (visible in patient dashboard) ──

@@ -9,3 +9,4 @@ backend/app/__pycache__/
 .DS_Store
 backend/alembic/__pycache__/
 *.log
+.kilo/

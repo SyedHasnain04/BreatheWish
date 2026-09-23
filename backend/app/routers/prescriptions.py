@@ -1,9 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from typing import Dict, Any, Optional
 from datetime import datetime
-import json
-import uuid
 
 from app.database import get_db
 from app.middleware.auth import get_current_user

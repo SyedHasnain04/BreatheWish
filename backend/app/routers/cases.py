@@ -1,9 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from pydantic import BaseModel
 import json
-import uuid
 
 from app.database import get_db
 from app.middleware.auth import get_current_user

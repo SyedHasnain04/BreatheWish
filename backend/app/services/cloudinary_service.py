@@ -1,6 +1,5 @@
 import cloudinary
 import cloudinary.uploader
-import cloudinary.api
 from app.config import settings
 import io
 
@@ -27,7 +26,7 @@ def upload_image(image_bytes: bytes, folder: str = "breathewish") -> dict:
     except Exception as e:
         print(f"Cloudinary upload notice ({e}), using fallback image")
         return {
-            "url": "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+            "url": "https://res.cloudinary.com/act3ugiy/image/upload/v1790138908/breathewish/demo/demo_chest_xray.jpg",
             "public_id": "fallback"
         }
 
