@@ -17,13 +17,13 @@ Run `python backend/seed.py` once to seed the database with these verified test 
 ### 1. Attending Physicians (Doctors)
 All doctors are pre-configured with the default password: **`doctor123`**
 
-| Name | Role / Specialty | Seniority | Email | Password |
+| Name | Role / Specialty | Hospital ID (Badge) | Email | Password |
 |---|---|---|---|---|
-| **Dr. Arun Mehta** | Pulmonology (Primary) | Senior | `arun@hospital.com` | `doctor123` |
-| **Dr. Priya Sharma** | Pulmonology (Primary) | Consultant | `priya@hospital.com` | `doctor123` |
-| **Dr. Vikram Nair** | Pulmonology (Primary) | Junior | `vikram@hospital.com` | `doctor123` |
-| **Dr. Rajan Pillai** | Cardiology (Second Opinion) | Senior | `rajan@hospital.com` | `doctor123` |
-| **Dr. Sunita Rao** | Radiology (Second Opinion) | Senior | `sunita@hospital.com` | `doctor123` |
+| **Dr. Arun Mehta** | Pulmonology (Primary) | `BWD-ARUN01` | `arun@hospital.com` | `doctor123` |
+| **Dr. Priya Sharma** | Pulmonology (Primary) | `BWD-PRIYA1` | `priya@hospital.com` | `doctor123` |
+| **Dr. Vikram Nair** | Pulmonology (Primary) | `BWD-VIKR01` | `vikram@hospital.com` | `doctor123` |
+| **Dr. Rajan Pillai** | Cardiology (Second Opinion) | `BWD-RAJA01` | `rajan@hospital.com` | `doctor123` |
+| **Dr. Sunita Rao** | Radiology (Second Opinion) | `BWD-SUNI01` | `sunita@hospital.com` | `doctor123` |
 
 ### 2. Patient Test Accounts
 All pre-seeded patients use the password: **`patient123`**
@@ -92,6 +92,48 @@ Execute these test scenarios to verify the full clinical workflow:
 - **Doctor Ownership Guard**: Doctor B attempting to update Doctor A's case verdict via `PATCH /cases/{id}` $\rightarrow$ backend returns `403 Forbidden`.
 - **Public Doctor Signup Guard**: Calling `POST /auth/register` with `role: "doctor"` without `X-Admin-Key` $\rightarrow$ backend rejects with `403 Forbidden`.
 - **Rate Limiting**: Sending > 15 login requests within 60 seconds from the same IP $\rightarrow$ backend returns `429 Too Many Requests`.
+
+---
+
+## 📊 Model Pipeline Verification & Benchmarks
+
+The inference pipeline performs image preprocessing, PyTorch DenseNet-121 forward pass, and Grad-CAM layer activation mapping on target layer `features.denseblock4.denselayer16.conv2`.
+
+### Benchmark Results (Standard Sample `frontend/public/chest-xray.png`)
+```text
+Inference Verification:
+- Confidence = 63.8%
+- Severity = moderate
+- Type = viral
+- Grad-CAM output bytes = 80,348
+- Inference Execution Latency = ~2.4 seconds (CPU execution)
+```
+
+### Pre-seeded Demo Cloud Assets
+All demonstration seed records link to live, high-resolution diagnostic radiograph assets on Cloudinary:
+- **Original Chest Radiograph**: `https://res.cloudinary.com/act3ugiy/image/upload/v1790138908/breathewish/demo/demo_chest_xray.jpg`
+- **PyTorch DenseNet-121 Grad-CAM**: `https://res.cloudinary.com/act3ugiy/image/upload/v1790138910/breathewish/demo/demo_chest_gradcam.png`
+
+---
+
+## ⚙️ Operational & Performance Architecture
+
+Key architectural optimizations implemented across frontend and backend:
+
+1. **Render Free-Tier Cold Start Resilience**:
+   - Free instances on Render spin down after 15 minutes of inactivity. Cold starts can take 20–30s.
+   - NextAuth `authorize` handler and Next.js reverse proxy (`/api/proxy/[...path]`) use an extended **50-second timeout** with `AbortSignal.timeout(50000)` to prevent premature 502 / auth abort failures.
+   - The login UI includes an intelligent progress timer that informs users when the backend is waking up.
+
+2. **CPU Threading & Event Loop Protection**:
+   - PyTorch is constrained to single-thread execution via `torch.set_num_threads(1)` and `torch.set_num_interop_threads(1)`. On fractional/shared CPU cloud containers, this eliminates thread contention and prevents gateway timeouts.
+   - CPU-bound endpoints (`create_case`, `test_inference`) run as synchronous worker functions (`def`) so FastAPI offloads them to a background threadpool, keeping the main async event loop responsive for keep-alives and health checks.
+
+3. **Resilient Cloudinary Uploads**:
+   - Cloudinary image uploads are wrapped with an execution timeout (15s) and automatic fallback to verified diagnostic sample assets. If cloud storage connectivity is delayed, case creation still completes without raising unhandled 500 errors.
+
+4. **Zero-Downtime Data Migrations**:
+   - Database table creation, unique constraint indexes (`ix_users_username`, `ix_users_doctor_id`), and image URL repairs execute idempotently inside FastAPI's `lifespan` handler on server boot.
 
 ---
 
