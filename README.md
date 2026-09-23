@@ -10,30 +10,161 @@ BreatheWish is an AI-assisted clinical decision support system for chest radiogr
 
 ---
 
+## 🗺️ End-to-End Clinical Workflow & Architecture
+
+### 1. Clinical Flowchart (Website Visit $\rightarrow$ Upload $\rightarrow$ AI Screening $\rightarrow$ Doctor Review)
+
+```mermaid
+flowchart TD
+    %% Styling Definitions
+    classDef startNode fill:#0F172A,stroke:#38BDF8,stroke-width:2px,color:#F8FAFC
+    classDef patientNode fill:#064E3B,stroke:#34D399,stroke-width:2px,color:#ECFDF5
+    classDef doctorNode fill:#1E3A8A,stroke:#60A5FA,stroke-width:2px,color:#EFF6FF
+    classDef aiNode fill:#4C1D95,stroke:#A78BFA,stroke-width:2px,color:#F5F3FF
+    classDef cloudNode fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#FFFBEB
+    classDef decisionNode fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F9FAFB
+
+    subgraph Entry ["1. Landing & Role-Based Portal Access"]
+        A["🌐 User visits BreatheWish (/)"]:::startNode
+        B{"Select Portal"}:::decisionNode
+        A --> B
+
+        B -- "Patient" --> C["Patient Login / Register<br/>(/login or /register)"]:::patientNode
+        B -- "Doctor" --> D["Hospital ID Badge Login<br/>(/login — e.g. BWD-ARUN01)"]:::doctorNode
+
+        C --> E["Patient Dashboard (/patient/dashboard)"]:::patientNode
+        D --> F["Doctor Worklist Dashboard (/doctor/dashboard)"]:::doctorNode
+    end
+
+    subgraph UploadFlow ["2. Patient Intake & Radiograph Submission"]
+        E --> G["Click 'New Case' (/patient/new-case)"]:::patientNode
+        G --> H["Step 1: Patient Demographics<br/>(Age, Sex, DOB, Blood Group)"]:::patientNode
+        H --> I["Step 2: Symptoms Assessment<br/>(Fever days, Cough type, Chest pain, Dyspnea)"]:::patientNode
+        I --> J["Step 3: Chest Radiograph Upload<br/>(Client validation: &lt;10 MB, PNG/JPEG/DICOM)"]:::patientNode
+        J --> K["Submit Case via Reverse Proxy (POST /api/proxy/cases/)"]:::patientNode
+    end
+
+    subgraph AIPipeline ["3. Automated AI Screening & Cloud Storage"]
+        K --> L["FastAPI Backend (POST /cases/)"]:::aiNode
+        
+        %% Parallel AI tasks
+        L --> M["PyTorch DenseNet-121 Inference<br/>(Confidence %, Severity, Bacterial/Viral)"]:::aiNode
+        L --> N["PyTorch Grad-CAM Layer Activation<br/>(Heatmap on features.denseblock4)"]:::aiNode
+        
+        M & N --> O["Cloudinary CDN Upload<br/>(Stores Diagnostic Radiograph & Grad-CAM)"]:::cloudNode
+        
+        L --> P["Triage Doctor Assignment<br/>(Matches case severity to pulmonologist)"]:::aiNode
+        L --> Q["Claude 3.5 Haiku LLM<br/>(Provisional prescription & dosage draft)"]:::aiNode
+
+        O & P & Q --> R[("Neon PostgreSQL Database<br/>Case Status: 'under_review'")]:::cloudNode
+    end
+
+    subgraph SafetyGate ["4. Safety Concealment Rule"]
+        R --> S["Patient View (/patient/case/[id])"]:::patientNode
+        S --> T["🔒 AI Concealment Active:<br/>Raw AI confidence, severity & Grad-CAM hidden.<br/>Status shown as 'Reviewing by Physician'."]:::patientNode
+    end
+
+    subgraph DoctorReview ["5. Physician Governance & Verification"]
+        R --> U["Doctor views Worklist (/doctor/dashboard)<br/>Cases prioritized by clinical severity"]:::doctorNode
+        U --> V["Doctor opens Diagnostic Case View (/doctor/case/[id])"]:::doctorNode
+
+        V --> W1["Interactive X-Ray Viewer<br/>(Toggle Original / Grad-CAM / Blend / Zoom)"]:::doctorNode
+        V --> W2["AI Pre-Read Radial Gauge<br/>(Confidence % & Severity Indicator)"]:::doctorNode
+        V --> W3["Clinical Symptoms & Patient History"]:::doctorNode
+
+        V --> X{"Specialist Second Opinion Needed?"}:::decisionNode
+        X -- "Yes" --> Y["Request Second Opinion (POST /second-opinion/)<br/>Assigned specialist reviews & submits verdict"]:::doctorNode
+        Y --> Z["Primary Physician Reviews Feedback"]:::doctorNode
+        X -- "No" --> Z
+
+        Z --> AA["Prescription Editor<br/>(Doctor edits AI draft medications, dosages & advice)"]:::doctorNode
+        AA --> AB["Doctor Confirms Verdict & Verifies Case<br/>(PATCH /cases/{id} + POST /prescriptions/{id}/verify)"]:::doctorNode
+        AB --> AC[("Neon PostgreSQL DB:<br/>Status updated to 'verified'")]:::cloudNode
+    end
+
+    subgraph Release ["6. Patient Notification & Care Plan Release"]
+        AC --> AD["Status Stepper advances to 'Verified'"]:::patientNode
+        AD --> AE["Verified Prescription Card Unlocked<br/>(Doctor signature, medications, dosage instructions)"]:::patientNode
+        AE --> AF["Secure Clinical Consultation Chat<br/>(Patient-doctor bidirectional messaging)"]:::patientNode
+    end
+```
+
+### 2. Technical & Network Architecture
+
+```mermaid
+graph TB
+    subgraph Client ["Client Browser (Next.js 14 Frontend)"]
+        direction TB
+        UI_P["Patient Portal<br/>- Dashboard & Case Tracker<br/>- Stepper Component<br/>- Consultation Thread"]
+        UI_D["Doctor Portal<br/>- Worklist Dashboard<br/>- Multi-mode X-Ray Viewer<br/>- Prescription Editor<br/>- Second Opinion Panel"]
+        AUTH_C["NextAuth v4 Session<br/>- JWT stored in HttpOnly Cookie<br/>- Role-based Edge Middleware"]
+    end
+
+    subgraph ProxyLayer ["Next.js Server-Side Proxy (/api/proxy)"]
+        PROXY["Same-Origin Reverse Proxy<br/>- Injects Bearer token into upstream header<br/>- 50s timeout for cold-start resilience"]
+    end
+
+    subgraph Backend ["FastAPI Backend (Render Cloud)"]
+        direction TB
+        ROUTER_AUTH["/auth (Login, OAuth, Register)"]
+        ROUTER_CASES["/cases (Upload, Triage, Verdict)"]
+        ROUTER_RX["/prescriptions (Draft, Verify)"]
+        ROUTER_SO["/second-opinion (Consultation, Agreement)"]
+        ROUTER_MSG["/consultations (Secure Messaging)"]
+        SCHEDULER["APScheduler (Daily 9am Follow-up Reminders)"]
+    end
+
+    subgraph AI_Engine ["PyTorch & LLM Inference Engines"]
+        DENSENET["DenseNet-121 (CheXNet)<br/>- 1024-dim features<br/>- Single-thread CPU optimization"]
+        GRADCAM["Grad-CAM Layer Activation<br/>- features.denseblock4.denselayer16<br/>- Heatmap overlay generation"]
+        CLAUDE["Anthropic Claude 3.5 Haiku<br/>- Clinical prescription drafting<br/>- Medication & dosage structuring"]
+    end
+
+    subgraph External_Storage ["Storage & Database"]
+        DB[(Neon PostgreSQL<br/>Users, Cases, Prescriptions,<br/>Second Opinions, Audit Logs)]
+        CLOUDINARY["Cloudinary CDN<br/>- Diagnostic Radiographs<br/>- Grad-CAM Heatmaps"]
+    end
+
+    %% Connections
+    UI_P & UI_D --> AUTH_C
+    AUTH_C --> PROXY
+    PROXY --> ROUTER_AUTH & ROUTER_CASES & ROUTER_RX & ROUTER_SO & ROUTER_MSG
+
+    ROUTER_CASES --> DENSENET
+    ROUTER_CASES --> GRADCAM
+    ROUTER_CASES --> CLAUDE
+    ROUTER_CASES --> CLOUDINARY
+    ROUTER_CASES & ROUTER_AUTH & ROUTER_RX & ROUTER_SO & ROUTER_MSG --> DB
+
+    SCHEDULER --> DB
+```
+
+---
+
 ## 🔑 Demo & Test Login Credentials
 
 Run `python backend/seed.py` once to seed the database with these verified test accounts:
 
 ### 1. Attending Physicians (Doctors)
-All doctors are pre-configured with the default password: **`doctor123`**
+Doctor accounts use hospital badge authentication. In the login portal (`/login`), select the **Doctor** tab and enter the **Hospital ID Card Number** (no password required):
 
-| Name | Role / Specialty | Hospital ID (Badge) | Email | Password |
-|---|---|---|---|---|
-| **Dr. Arun Mehta** | Pulmonology (Primary) | `BWD-ARUN01` | `arun@hospital.com` | `doctor123` |
-| **Dr. Priya Sharma** | Pulmonology (Primary) | `BWD-PRIYA1` | `priya@hospital.com` | `doctor123` |
-| **Dr. Vikram Nair** | Pulmonology (Primary) | `BWD-VIKR01` | `vikram@hospital.com` | `doctor123` |
-| **Dr. Rajan Pillai** | Cardiology (Second Opinion) | `BWD-RAJA01` | `rajan@hospital.com` | `doctor123` |
-| **Dr. Sunita Rao** | Radiology (Second Opinion) | `BWD-SUNI01` | `sunita@hospital.com` | `doctor123` |
+| Name | Role / Specialty | Hospital ID Card (Badge No.) | Seniority |
+|---|---|---|---|
+| **Dr. Arun Mehta** | Pulmonology (Primary) | `BWD-ARUN01` | Senior Attending |
+| **Dr. Priya Sharma** | Pulmonology (Primary) | `BWD-PRIYA1` | Consultant |
+| **Dr. Vikram Nair** | Pulmonology (Primary) | `BWD-VIKR01` | Junior Attending |
+| **Dr. Rajan Pillai** | Cardiology (Second Opinion) | `BWD-RAJA01` | Senior Specialist |
+| **Dr. Sunita Rao** | Radiology (Second Opinion) | `BWD-SUNI01` | Senior Specialist |
 
 ### 2. Patient Test Accounts
 All pre-seeded patients use the password: **`patient123`**
 
-| Name | Role | Email | Password |
+| Name | Role | Username / Email | Password |
 |---|---|---|---|
-| **Ravi Kumar** | Patient | `ravi@patient.com` | `patient123` |
-| **Priya Nair** | Patient | `priya@patient.com` | `patient123` |
+| **Ravi Kumar** | Patient | `ravi_kumar` or `ravi@patient.com` | `patient123` |
+| **Priya Nair** | Patient | `priya_nair` or `priya@patient.com` | `patient123` |
 
-> **Self-Registration**: Patients can also self-register at `/register` (passwords must be at least 8 characters). Public registration is locked to patient accounts; doctor accounts cannot be registered publicly.
+> **Self-Registration**: Patients can also self-register at `/register` (passwords must be at least 8 characters). Public registration is locked to patient accounts; doctor accounts are provisioned via hospital administration.
 
 ---
 
@@ -55,7 +186,7 @@ Execute these test scenarios to verify the full clinical workflow:
    - Direct API call `GET /cases/{id}` with the patient's token does not expose AI pre-read fields.
 
 ### Test Case 3: Doctor Worklist Triage & Grad-CAM Analysis
-1. Open an incognito browser window, navigate to `/login`, and sign in as `arun@hospital.com` (`doctor123`).
+1. Open an incognito browser window, navigate to `/login`, select the **Doctor** tab, and enter Hospital ID card number: `BWD-ARUN01` (Dr. Arun Mehta).
 2. In the Doctor Dashboard (`/doctor/dashboard`), verify the case is displayed in the worklist sorted by clinical severity.
 3. Click into the case (`/doctor/case/[id]`):
    - Inspect the **AI Pre-Read Radial Gauge** showing pneumonia probability and severity band.
@@ -78,7 +209,7 @@ Execute these test scenarios to verify the full clinical workflow:
 ### Test Case 6: Specialist Second Opinion Workflow
 1. As the primary doctor, expand the **Request a second opinion** drawer on a case.
 2. Select specialty (e.g., *Radiology*) and enter clinical reasoning.
-3. Log out and log in as `sunita@hospital.com` (Radiologist).
+3. Log out, return to `/login`, select the **Doctor** tab, and enter `BWD-SUNI01` (Dr. Sunita Rao, Radiologist).
 4. Review the requested consultation, choose **Agree** / **Disagree**, enter verdict notes, and submit.
 5. **Expected Result**: Primary doctor sees the specialist's feedback with matching badges.
 
