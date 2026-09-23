@@ -12,7 +12,6 @@ from app.models.prescription import Prescription
 from app.models.audit import AuditLog
 from app.models.notification import Notification
 
-from app.services.ml_service import run_inference
 from app.services.cloudinary_service import upload_image
 from app.services.doctor_assignment import assign_doctor
 from app.services.llm_service import generate_prescription_draft
@@ -23,6 +22,7 @@ router = APIRouter(prefix="/cases", tags=["cases"])
 def test_inference(xray: UploadFile = File(...)) -> Dict[str, Any]:
     """Temporary endpoint to test the ML pipeline end-to-end."""
     try:
+        from app.services.ml_service import run_inference
         image_bytes = xray.file.read()
         ml_result = run_inference(image_bytes)
         gradcam_upload = upload_image(ml_result["gradcam_image"], folder="breathewish/gradcam")
@@ -85,6 +85,7 @@ def create_case(
         )
 
     # 3. ML Inference
+    from app.services.ml_service import run_inference
     ml_result = run_inference(image_bytes)
     
     # 4 & 5. Cloudinary Uploads

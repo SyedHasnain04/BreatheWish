@@ -74,9 +74,11 @@ app.include_router(notifications.router)
 app.include_router(follow_up.router)
 
 @app.get("/")
+@app.head("/")
 def read_root():
     return {"message": "Welcome to BreatheWish API", "status": "online"}
 
 @app.get("/health")
+@app.head("/health")
 def health_check():
     return {"status": "healthy", "service": "BreatheWish API"}
